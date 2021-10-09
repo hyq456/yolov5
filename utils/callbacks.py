@@ -9,6 +9,10 @@ class Callbacks:
     Handles all registered callbacks for YOLOv5 Hooks
     """
 
+<<<<<<< HEAD
+=======
+    # Define the available callbacks
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     _callbacks = {
         'on_pretrain_routine_start': [],
         'on_pretrain_routine_end': [],
@@ -34,16 +38,23 @@ class Callbacks:
         'teardown': [],
     }
 
+<<<<<<< HEAD
     def __init__(self):
         return
 
+=======
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     def register_action(self, hook, name='', callback=None):
         """
         Register a new action to a callback hook
 
         Args:
             hook        The callback hook name to register the action to
+<<<<<<< HEAD
             name        The name of the action
+=======
+            name        The name of the action for later reference
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
             callback    The callback to fire
         """
         assert hook in self._callbacks, f"hook '{hook}' not found in callbacks {self._callbacks}"
@@ -62,6 +73,7 @@ class Callbacks:
         else:
             return self._callbacks
 
+<<<<<<< HEAD
     def run_callbacks(self, hook, *args, **kwargs):
         """
         Loop through the registered actions and fire all callbacks
@@ -177,3 +189,19 @@ class Callbacks:
         Fires all registered callbacks before teardown
         """
         self.run_callbacks('teardown', *args, **kwargs)
+=======
+    def run(self, hook, *args, **kwargs):
+        """
+        Loop through the registered actions and fire all callbacks
+
+        Args:
+            hook The name of the hook to check, defaults to all
+            args Arguments to receive from YOLOv5
+            kwargs Keyword Arguments to receive from YOLOv5
+        """
+
+        assert hook in self._callbacks, f"hook '{hook}' not found in callbacks {self._callbacks}"
+
+        for logger in self._callbacks[hook]:
+            logger['callback'](*args, **kwargs)
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187

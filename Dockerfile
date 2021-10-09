@@ -10,7 +10,11 @@ RUN apt update && apt install -y zip htop screen libgl1-mesa-glx
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip
 RUN pip uninstall -y nvidia-tensorboard nvidia-tensorboard-plugin-dlprof
+<<<<<<< HEAD
 RUN pip install --no-cache -r requirements.txt coremltools onnx gsutil notebook
+=======
+RUN pip install --no-cache -r requirements.txt coremltools onnx gsutil notebook wandb>=0.12.2
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 RUN pip install --no-cache -U torch torchvision numpy
 # RUN pip install --no-cache torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
@@ -50,3 +54,12 @@ ENV HOME=/usr/src/app
 
 # Clean up
 # docker system prune -a --volumes
+<<<<<<< HEAD
+=======
+
+# Update Ubuntu drivers
+# https://www.maketecheasier.com/install-nvidia-drivers-ubuntu/
+
+# DDP test
+# python -m torch.distributed.run --nproc_per_node 2 --master_port 1 train.py --epochs 3
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187

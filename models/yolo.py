@@ -238,7 +238,11 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in [Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
+<<<<<<< HEAD
                  BottleneckCSP, C3, C3TR, C3SPP, C3Ghost,CBAM,CoordAtt]:
+=======
+                 BottleneckCSP, C3, C3TR, C3SPP, C3Ghost,CBAM]:
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
@@ -251,8 +255,11 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             args = [ch[f]]
         elif m is Concat:
             c2 = sum([ch[x] for x in f])
+<<<<<<< HEAD
         elif m is Concat_bifpn:
             c2 = max([ch[x] for x in f])
+=======
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         elif m is Detect:
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
@@ -279,7 +286,11 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument('--cfg', type=str, default='./hub/yolov5s6-coordAtt.yaml', help='model.yaml')
+=======
+    parser.add_argument('--cfg', type=str, default='./hub/yolov5s6-cbam.yaml', help='model.yaml')
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     opt = parser.parse_args()

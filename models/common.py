@@ -490,6 +490,7 @@ class CBAM(nn.Module):
         out = self.spatial_attention(out) * out
         return out
 
+<<<<<<< HEAD
 
 class h_sigmoid(nn.Module):
     def __init__(self, inplace=True):
@@ -571,3 +572,5 @@ class Concat_bifpn(nn.Module):   #pairwise add
             weight = w / (torch.sum(w, dim=0) + self.epsilon)
             x = self.conv(self.act (weight[0] * x[0] + weight[1] * x[1] + weight[2] * x[2]))
         return x
+=======
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187

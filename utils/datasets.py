@@ -15,6 +15,10 @@ from itertools import repeat
 from multiprocessing.pool import ThreadPool, Pool
 from pathlib import Path
 from threading import Thread
+<<<<<<< HEAD
+=======
+from zipfile import ZipFile
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 import cv2
 import numpy as np
@@ -26,8 +30,13 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from utils.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
+<<<<<<< HEAD
 from utils.general import check_requirements, check_file, check_dataset, xywh2xyxy, xywhn2xyxy, xyxy2xywhn, \
     xyn2xy, segments2boxes, clean_str
+=======
+from utils.general import check_dataset, check_requirements, check_yaml, clean_str, segments2boxes, \
+    xywh2xyxy, xywhn2xyxy, xyxy2xywhn, xyn2xy
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 from utils.torch_utils import torch_distributed_zero_first
 
 # Parameters
@@ -156,7 +165,11 @@ class _RepeatSampler(object):
 
 class LoadImages:  # for inference
     def __init__(self, path, img_size=640, stride=32, auto=True):
+<<<<<<< HEAD
         p = str(Path(path).absolute())  # os-agnostic absolute path
+=======
+        p = str(Path(path).resolve())  # os-agnostic absolute path
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         if '*' in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
         elif os.path.isdir(p):
@@ -314,7 +327,11 @@ class LoadStreams:  # multiple IP or RTSP cameras
         print('')  # newline
 
         # check for common shapes
+<<<<<<< HEAD
         s = np.stack([letterbox(x, self.img_size, stride=self.stride, auto=self.auto)[0].shape for x in self.imgs], 0)  # shapes
+=======
+        s = np.stack([letterbox(x, self.img_size, stride=self.stride, auto=self.auto)[0].shape for x in self.imgs])
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         self.rect = np.unique(s, axis=0).shape[0] == 1  # rect inference if all shapes equal
         if not self.rect:
             print('WARNING: Different stream shapes detected. For optimal performance supply similarly-shaped streams.')
@@ -365,6 +382,11 @@ def img2label_paths(img_paths):
 
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
+<<<<<<< HEAD
+=======
+    cache_version = 0.5  # dataset labels *.cache version
+
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
                  cache_images=False, single_cls=False, stride=32, pad=0.0, prefix=''):
         self.img_size = img_size
@@ -404,7 +426,12 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache')
         try:
             cache, exists = np.load(cache_path, allow_pickle=True).item(), True  # load dict
+<<<<<<< HEAD
             assert cache['version'] == 0.4 and cache['hash'] == get_hash(self.label_files + self.img_files)
+=======
+            assert cache['version'] == self.cache_version  # same version
+            assert cache['hash'] == get_hash(self.label_files + self.img_files)  # same hash
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         except:
             cache, exists = self.cache_labels(cache_path, prefix), False  # cache
 
@@ -487,7 +514,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
         desc = f"{prefix}Scanning '{path.parent / path.stem}' images and labels..."
         with Pool(NUM_THREADS) as pool:
+<<<<<<< HEAD
             pbar = tqdm(pool.imap_unordered(verify_image_label, zip(self.img_files, self.label_files, repeat(prefix))),
+=======
+            pbar = tqdm(pool.imap(verify_image_label, zip(self.img_files, self.label_files, repeat(prefix))),
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                         desc=desc, total=len(self.img_files))
             for im_file, l, shape, segments, nm_f, nf_f, ne_f, nc_f, msg in pbar:
                 nm += nm_f
@@ -508,7 +539,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         x['hash'] = get_hash(self.label_files + self.img_files)
         x['results'] = nf, nm, ne, nc, len(self.img_files)
         x['msgs'] = msgs  # warnings
+<<<<<<< HEAD
         x['version'] = 0.4  # cache version
+=======
+        x['version'] = self.cache_version  # cache version
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         try:
             np.save(path, x)  # save cache for next time
             path.with_suffix('.cache.npy').rename(path)  # remove .npy suffix
@@ -568,7 +603,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         if self.augment:
             # Albumentations
             img, labels = self.albumentations(img, labels)
+<<<<<<< HEAD
             nl = len(labels) # update after albumentations
+=======
+            nl = len(labels)  # update after albumentations
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
             # HSV color-space
             augment_hsv(img, hgain=hyp['hsv_h'], sgain=hyp['hsv_s'], vgain=hyp['hsv_v'])
@@ -661,6 +700,10 @@ def load_mosaic(self, index):
     s = self.img_size
     yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in self.mosaic_border]  # mosaic center x, y
     indices = [index] + random.choices(self.indices, k=3)  # 3 additional image indices
+<<<<<<< HEAD
+=======
+    random.shuffle(indices)
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     for i, index in enumerate(indices):
         # Load image
         img, _, (h, w) = load_image(self, index)
@@ -717,6 +760,10 @@ def load_mosaic9(self, index):
     labels9, segments9 = [], []
     s = self.img_size
     indices = [index] + random.choices(self.indices, k=8)  # 8 additional image indices
+<<<<<<< HEAD
+=======
+    random.shuffle(indices)
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     for i, index in enumerate(indices):
         # Load image
         img, _, (h, w) = load_image(self, index)
@@ -861,7 +908,11 @@ def autosplit(path='../datasets/coco128/images', weights=(0.9, 0.1, 0.0), annota
 def verify_image_label(args):
     # Verify one image-label pair
     im_file, lb_file, prefix = args
+<<<<<<< HEAD
     nm, nf, ne, nc = 0, 0, 0, 0  # number missing, found, empty, corrupt
+=======
+    nm, nf, ne, nc, msg, segments = 0, 0, 0, 0, '', []  # number (missing, found, empty, corrupt), message, segments
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     try:
         # verify images
         im = Image.open(im_file)
@@ -872,10 +923,18 @@ def verify_image_label(args):
         if im.format.lower() in ('jpg', 'jpeg'):
             with open(im_file, 'rb') as f:
                 f.seek(-2, 2)
+<<<<<<< HEAD
                 assert f.read() == b'\xff\xd9', 'corrupted JPEG'
 
         # verify labels
         segments = []  # instance segments
+=======
+                if f.read() != b'\xff\xd9':  # corrupt JPEG
+                    Image.open(im_file).save(im_file, format='JPEG', subsampling=0, quality=100)  # re-save image
+                    msg = f'{prefix}WARNING: corrupt JPEG restored and saved {im_file}'
+
+        # verify labels
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         if os.path.isfile(lb_file):
             nf = 1  # label found
             with open(lb_file, 'r') as f:
@@ -896,7 +955,11 @@ def verify_image_label(args):
         else:
             nm = 1  # label missing
             l = np.zeros((0, 5), dtype=np.float32)
+<<<<<<< HEAD
         return im_file, l, shape, segments, nm, nf, ne, nc, ''
+=======
+        return im_file, l, shape, segments, nm, nf, ne, nc, msg
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     except Exception as e:
         nc = 1
         msg = f'{prefix}WARNING: Ignoring corrupted image and/or label {im_file}: {e}'
@@ -922,8 +985,13 @@ def dataset_stats(path='coco128.yaml', autodownload=False, verbose=False, profil
         # Unzip data.zip TODO: CONSTRAINT: path/to/abc.zip MUST unzip to 'path/to/abc/'
         if str(path).endswith('.zip'):  # path is data.zip
             assert Path(path).is_file(), f'Error unzipping {path}, file not found'
+<<<<<<< HEAD
             assert os.system(f'unzip -q {path} -d {path.parent}') == 0, f'Error unzipping {path}'
             dir = path.with_suffix('')  # dataset directory
+=======
+            ZipFile(path).extractall(path=path.parent)  # unzip
+            dir = path.with_suffix('')  # dataset directory == zip name
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
             return True, str(dir), next(dir.rglob('*.yaml'))  # zipped, data_dir, yaml_path
         else:  # path is data.yaml
             return False, None, path
@@ -937,7 +1005,11 @@ def dataset_stats(path='coco128.yaml', autodownload=False, verbose=False, profil
         im.save(im_dir / Path(f).name, quality=75)  # save
 
     zipped, data_dir, yaml_path = unzip(Path(path))
+<<<<<<< HEAD
     with open(check_file(yaml_path), errors='ignore') as f:
+=======
+    with open(check_yaml(yaml_path), errors='ignore') as f:
+>>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         data = yaml.safe_load(f)  # data dict
         if zipped:
             data['path'] = data_dir  # TODO: should this be dir.resolve()?
