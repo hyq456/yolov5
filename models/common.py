@@ -547,3 +547,27 @@ class CoordAtt(nn.Module):
         # out = a_h.expand_as(x) * a_w.expand_as(x) * identity
 
         return out
+
+class Concat_bifpn(nn.Module):   #pairwise add
+    # Concatenate a list of tensors along dimension
+    def __init__(self, c1, c2):
+        super(Concat_bifpn, self).__init__()
+        self.w1 = nn.Parameter(torch.ones(2, dtype=torch.float32), requires_grad=True)
+        self.w2 = nn.Parameter(torch.ones(3, dtype=torch.float32), requires_grad=True)
+        self.epsilon = 0.0001
+        self.conv = Conv(c1, c2, 1 ,1 , 0 )
+        #self.act= nn.SiLU()  #这里原本用silu，但是用途应该是保证权重是0-1之间 所以改成relu
+        self.act=nn.Relu()
+    def forward(self, x): # mutil-layer 1-3 layers
+        #print("bifpn:",x.shape)
+        if len(x) == 2:
+            # w = self.relu(self.w1)
+            w = self.w1
+            weight = w / (torch.sum(w, dim=0) + self.epsilon)
+            x = self.conv(self.act(weight[0] * x[0] + weight[1] * x[1]))
+        elif len(x) == 3:
+            # w = self.relu(self.w2)
+            w = self.w2
+            weight = w / (torch.sum(w, dim=0) + self.epsilon)
+            x = self.conv(self.act (weight[0] * x[0] + weight[1] * x[1] + weight[2] * x[2]))
+        return x
