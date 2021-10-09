@@ -19,8 +19,9 @@ from torch.cuda import amp
 import torch.nn.functional as F
 
 from utils.datasets import exif_transpose, letterbox
-from utils.general import non_max_suppression, make_divisible, scale_coords, increment_path, xyxy2xywh, save_one_box
-from utils.plots import colors, plot_one_box
+from utils.general import colorstr, increment_path, make_divisible, non_max_suppression, save_one_box, \
+    scale_coords, xyxy2xywh
+from utils.plots import Annotator, colors, plot_one_box
 from utils.torch_utils import time_sync
 
 LOGGER = logging.getLogger(__name__)
@@ -365,12 +366,13 @@ class Detections:
 
     def display(self, pprint=False, show=False, save=False, crop=False, render=False, save_dir=Path('')):
         for i, (im, pred) in enumerate(zip(self.imgs, self.pred)):
-            str = f'image {i + 1}/{len(self.pred)}: {im.shape[0]}x{im.shape[1]} '
+            s = f'image {i + 1}/{len(self.pred)}: {im.shape[0]}x{im.shape[1]} '  # string
             if pred.shape[0]:
                 for c in pred[:, -1].unique():
                     n = (pred[:, -1] == c).sum()  # detections per class
-                    str += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
                 if show or save or render or crop:
+                    annotator = Annotator(im, example=str(self.names))
                     for *box, conf, cls in reversed(pred):  # xyxy, confidence, class
                         label = f'{self.names[int(cls)]} {conf:.2f}'
                         if crop:
@@ -378,11 +380,11 @@ class Detections:
                         else:  # all others
                             im = plot_one_box(box, im, label=label, color=colors(cls))
             else:
-                str += '(no detections)'
+                s += '(no detections)'
 
             im = Image.fromarray(im.astype(np.uint8)) if isinstance(im, np.ndarray) else im  # from np
             if pprint:
-                LOGGER.info(str.rstrip(', '))
+                LOGGER.info(s.rstrip(', '))
             if show:
                 im.show(self.files[i])  # show
             if save:
@@ -490,7 +492,6 @@ class CBAM(nn.Module):
         out = self.spatial_attention(out) * out
         return out
 
-<<<<<<< HEAD
 
 class h_sigmoid(nn.Module):
     def __init__(self, inplace=True):
@@ -572,5 +573,3 @@ class Concat_bifpn(nn.Module):   #pairwise add
             weight = w / (torch.sum(w, dim=0) + self.epsilon)
             x = self.conv(self.act (weight[0] * x[0] + weight[1] * x[1] + weight[2] * x[2]))
         return x
-=======
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187

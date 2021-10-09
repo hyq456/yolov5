@@ -163,7 +163,8 @@ class _RepeatSampler(object):
             yield from iter(self.sampler)
 
 
-class LoadImages:  # for inference
+class LoadImages:
+    # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
     def __init__(self, path, img_size=640, stride=32, auto=True):
 <<<<<<< HEAD
         p = str(Path(path).absolute())  # os-agnostic absolute path
@@ -249,6 +250,7 @@ class LoadImages:  # for inference
 
 
 class LoadWebcam:  # for inference
+    # YOLOv5 local webcam dataloader, i.e. `python detect.py --source 0`
     def __init__(self, pipe='0', img_size=640, stride=32):
         self.img_size = img_size
         self.stride = stride
@@ -289,7 +291,8 @@ class LoadWebcam:  # for inference
         return 0
 
 
-class LoadStreams:  # multiple IP or RTSP cameras
+class LoadStreams:
+    # YOLOv5 streamloader, i.e. `python detect.py --source 'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP streams`
     def __init__(self, sources='streams.txt', img_size=640, stride=32, auto=True):
         self.mode = 'stream'
         self.img_size = img_size
@@ -321,7 +324,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
             self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')  # infinite stream fallback
 
             _, self.imgs[i] = cap.read()  # guarantee first frame
-            self.threads[i] = Thread(target=self.update, args=([i, cap]), daemon=True)
+            self.threads[i] = Thread(target=self.update, args=([i, cap, s]), daemon=True)
             print(f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
         print('')  # newline
@@ -336,7 +339,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
         if not self.rect:
             print('WARNING: Different stream shapes detected. For optimal performance supply similarly-shaped streams.')
 
-    def update(self, i, cap):
+    def update(self, i, cap, stream):
         # Read stream `i` frames in daemon thread
         n, f, read = 0, self.frames[i], 1  # frame number, frame array, inference every 'read' frame
         while cap.isOpened() and n < f:
@@ -345,7 +348,12 @@ class LoadStreams:  # multiple IP or RTSP cameras
             cap.grab()
             if n % read == 0:
                 success, im = cap.retrieve()
-                self.imgs[i] = im if success else self.imgs[i] * 0
+                if success:
+                    self.imgs[i] = im
+                else:
+                    print('WARNING: Video stream unresponsive, please check your IP camera connection.')
+                    self.imgs[i] *= 0
+                    cap.open(stream)  # re-open stream if signal was lost
             time.sleep(1 / self.fps[i])  # wait time
 
     def __iter__(self):
@@ -381,9 +389,14 @@ def img2label_paths(img_paths):
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
 
+<<<<<<< HEAD
 class LoadImagesAndLabels(Dataset):  # for training/testing
 <<<<<<< HEAD
 =======
+=======
+class LoadImagesAndLabels(Dataset):
+    # YOLOv5 train_loader/val_loader, loads images and labels for training and validation
+>>>>>>> 276b6745132f2da0641706124c466b69f21b670c
     cache_version = 0.5  # dataset labels *.cache version
 
 >>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
@@ -694,8 +707,7 @@ def load_image(self, i):
 
 
 def load_mosaic(self, index):
-    # loads images in a 4-mosaic
-
+    # YOLOv5 4-mosaic loader. Loads 1 image + 3 random images into a 4-image mosaic
     labels4, segments4 = [], []
     s = self.img_size
     yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in self.mosaic_border]  # mosaic center x, y
@@ -755,8 +767,7 @@ def load_mosaic(self, index):
 
 
 def load_mosaic9(self, index):
-    # loads images in a 9-mosaic
-
+    # YOLOv5 9-mosaic loader. Loads 1 image + 8 random images into a 9-image mosaic
     labels9, segments9 = [], []
     s = self.img_size
     indices = [index] + random.choices(self.indices, k=8)  # 8 additional image indices
@@ -997,12 +1008,22 @@ def dataset_stats(path='coco128.yaml', autodownload=False, verbose=False, profil
             return False, None, path
 
     def hub_ops(f, max_dim=1920):
-        # HUB ops for 1 image 'f'
-        im = Image.open(f)
-        r = max_dim / max(im.height, im.width)  # ratio
-        if r < 1.0:  # image too large
-            im = im.resize((int(im.width * r), int(im.height * r)))
-        im.save(im_dir / Path(f).name, quality=75)  # save
+        # HUB ops for 1 image 'f': resize and save at reduced quality in /dataset-hub for web/app viewing
+        f_new = im_dir / Path(f).name  # dataset-hub image filename
+        try:  # use PIL
+            im = Image.open(f)
+            r = max_dim / max(im.height, im.width)  # ratio
+            if r < 1.0:  # image too large
+                im = im.resize((int(im.width * r), int(im.height * r)))
+            im.save(f_new, quality=75)  # save
+        except Exception as e:  # use OpenCV
+            print(f'WARNING: HUB ops PIL failure {f}: {e}')
+            im = cv2.imread(f)
+            im_height, im_width = im.shape[:2]
+            r = max_dim / max(im_height, im_width)  # ratio
+            if r < 1.0:  # image too large
+                im = cv2.resize(im, (int(im_width * r), int(im_height * r)), interpolation=cv2.INTER_LINEAR)
+            cv2.imwrite(str(f_new), im)
 
     zipped, data_dir, yaml_path = unzip(Path(path))
 <<<<<<< HEAD

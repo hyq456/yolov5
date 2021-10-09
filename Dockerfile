@@ -16,7 +16,7 @@ RUN pip install --no-cache -r requirements.txt coremltools onnx gsutil notebook
 RUN pip install --no-cache -r requirements.txt coremltools onnx gsutil notebook wandb>=0.12.2
 >>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 RUN pip install --no-cache -U torch torchvision numpy
-# RUN pip install --no-cache torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+# RUN pip install --no-cache torch==1.9.1+cu111 torchvision==0.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 # Create working directory
 RUN mkdir -p /usr/src/app
@@ -25,8 +25,11 @@ WORKDIR /usr/src/app
 # Copy contents
 COPY . /usr/src/app
 
+# Downloads to user config dir
+ADD https://ultralytics.com/assets/Arial.ttf /root/.config/Ultralytics/
+
 # Set environment variables
-ENV HOME=/usr/src/app
+# ENV HOME=/usr/src/app
 
 
 # Usage Examples -------------------------------------------------------------------------------------------------------
