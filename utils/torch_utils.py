@@ -15,10 +15,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import torch
-<<<<<<< HEAD
-import torch.backends.cudnn as cudnn
-=======
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
@@ -44,18 +40,6 @@ def torch_distributed_zero_first(local_rank: int):
         dist.barrier(device_ids=[0])
 
 
-<<<<<<< HEAD
-def init_torch_seeds(seed=0):
-    # Speed-reproducibility tradeoff https://pytorch.org/docs/stable/notes/randomness.html
-    torch.manual_seed(seed)
-    if seed == 0:  # slower, more reproducible
-        cudnn.benchmark, cudnn.deterministic = False, True
-    else:  # faster, less reproducible
-        cudnn.benchmark, cudnn.deterministic = True, False
-
-
-=======
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 def date_modified(path=__file__):
     # return human-readable file modification date, i.e. '2021-3-26'
     t = datetime.datetime.fromtimestamp(Path(path).stat().st_mtime)
@@ -299,8 +283,6 @@ def copy_attr(a, b, include=(), exclude=()):
             setattr(a, k, v)
 
 
-<<<<<<< HEAD
-=======
 class EarlyStopping:
     # YOLOv5 simple early stopper
     def __init__(self, patience=30):
@@ -321,7 +303,6 @@ class EarlyStopping:
         return stop
 
 
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 class ModelEMA:
     """ Model Exponential Moving Average from https://github.com/rwightman/pytorch-image-models
     Keep a moving average of everything in the model state_dict (parameters and buffers).

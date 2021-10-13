@@ -8,14 +8,10 @@ from pathlib import Path
 import torch
 import yaml
 
-<<<<<<< HEAD
-sys.path.append('./')  # to run '$ python *.py' files in subdirectories
-=======
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[2]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 port = 0  # --master_port
 path = Path('').resolve()

@@ -18,10 +18,7 @@ from itertools import repeat
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from subprocess import check_output
-<<<<<<< HEAD
-=======
 from zipfile import ZipFile
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 import cv2
 import numpy as np
@@ -33,10 +30,6 @@ import yaml
 
 from utils.downloads import gsutil_getsize
 from utils.metrics import box_iou, fitness
-<<<<<<< HEAD
-from utils.torch_utils import init_torch_seeds
-=======
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -45,11 +38,6 @@ pd.options.display.max_columns = 10
 cv2.setNumThreads(0)  # prevent OpenCV from multithreading (incompatible with PyTorch DataLoader)
 os.environ['NUMEXPR_MAX_THREADS'] = str(min(os.cpu_count(), 8))  # NumExpr max threads
 
-<<<<<<< HEAD
-
-class timeout(contextlib.ContextDecorator):
-    # Usage: @timeout(seconds) decorator or 'with timeout(seconds):' context manager
-=======
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # YOLOv5 root directory
 
@@ -65,7 +53,6 @@ class Profile(contextlib.ContextDecorator):
 
 class Timeout(contextlib.ContextDecorator):
     # Usage: @Timeout(seconds) decorator or 'with Timeout(seconds):' context manager
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     def __init__(self, seconds, *, timeout_msg='', suppress_timeout_errors=True):
         self.seconds = int(seconds)
         self.timeout_message = timeout_msg
@@ -106,13 +93,6 @@ def set_logging(rank=-1, verbose=True):
         level=logging.INFO if (verbose and rank in [-1, 0]) else logging.WARN)
 
 
-<<<<<<< HEAD
-def init_seeds(seed=0):
-    # Initialize random number generator (RNG) seeds
-    random.seed(seed)
-    np.random.seed(seed)
-    init_torch_seeds(seed)
-=======
 def print_args(name, opt):
     # Print argparser arguments
     print(colorstr(f'{name}: ') + ', '.join(f'{k}={v}' for k, v in vars(opt).items()))
@@ -126,7 +106,6 @@ def init_seeds(seed=0):
     np.random.seed(seed)
     torch.manual_seed(seed)
     cudnn.benchmark, cudnn.deterministic = (False, True) if seed == 0 else (True, False)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 
 def get_latest_run(search_dir='.'):
@@ -135,8 +114,6 @@ def get_latest_run(search_dir='.'):
     return max(last_list, key=os.path.getctime) if last_list else ''
 
 
-<<<<<<< HEAD
-=======
 def user_config_dir(dir='Ultralytics', env_var='YOLOV5_CONFIG_DIR'):
     # Return path of user configuration directory. Prefer environment variable if exists. Make dir if required.
     env = os.getenv(env_var)
@@ -165,7 +142,6 @@ def is_writeable(dir, test=False):
         return os.access(dir, os.R_OK)  # possible issues on Windows
 
 
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 def is_docker():
     # Is environment a Docker container?
     return Path('/workspace').exists()  # or Path('/.dockerenv').exists()
@@ -182,14 +158,6 @@ def is_colab():
 
 def is_pip():
     # Is file in a pip package?
-<<<<<<< HEAD
-    return 'site-packages' in Path(__file__).absolute().parts
-
-
-def is_ascii(str=''):
-    # Is string composed of all ASCII (no UTF) characters?
-    return len(str.encode().decode('ascii', 'ignore')) == len(str)
-=======
     return 'site-packages' in Path(__file__).resolve().parts
 
 
@@ -197,7 +165,6 @@ def is_ascii(s=''):
     # Is string composed of all ASCII (no UTF) characters? (note str().isascii() introduced in python 3.7)
     s = str(s)  # convert list, tuple, None, etc. to str
     return len(s.encode().decode('ascii', 'ignore')) == len(s)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 
 def is_chinese(s='人工智能'):
@@ -210,11 +177,6 @@ def emojis(str=''):
     return str.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else str
 
 
-<<<<<<< HEAD
-def file_size(file):
-    # Return file size in MB
-    return Path(file).stat().st_size / 1e6
-=======
 def file_size(path):
     # Return file/dir size (MB)
     path = Path(path)
@@ -224,7 +186,6 @@ def file_size(path):
         return sum(f.stat().st_size for f in path.glob('**/*') if f.is_file()) / 1E6
     else:
         return 0.0
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
 
 def check_online():
@@ -251,12 +212,7 @@ def check_git_status():
     branch = check_output('git rev-parse --abbrev-ref HEAD', shell=True).decode().strip()  # checked out
     n = int(check_output(f'git rev-list {branch}..origin/master --count', shell=True))  # commits behind
     if n > 0:
-<<<<<<< HEAD
-        s = f"⚠️ WARNING: code is out of date by {n} commit{'s' * (n > 1)}. " \
-            f"Use 'git pull' to update or 'git clone {url}' to download latest."
-=======
         s = f"⚠️ YOLOv5 is out of date by {n} commit{'s' * (n > 1)}. Use `git pull` or `git clone {url}` to update."
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     else:
         s = f'up to date with {url} ✅'
     print(emojis(s))  # emoji-safe
@@ -275,11 +231,7 @@ def check_version(current='0.0.0', minimum='0.0.0', name='version ', pinned=Fals
 
 
 @try_except
-<<<<<<< HEAD
-def check_requirements(requirements='requirements.txt', exclude=()):
-=======
 def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), install=True):
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     # Check installed dependencies meet requirements (pass *.txt file or list of packages)
     prefix = colorstr('red', 'bold', 'requirements:')
     check_python()  # check python version
@@ -295,15 +247,6 @@ def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), insta
         try:
             pkg.require(r)
         except Exception as e:  # DistributionNotFound or VersionConflict if requirements not met
-<<<<<<< HEAD
-            print(f"{prefix} {r} not found and is required by YOLOv5, attempting auto-update...")
-            try:
-                assert check_online(), f"'pip install {r}' skipped (offline)"
-                print(check_output(f"pip install '{r}'", shell=True).decode())
-                n += 1
-            except Exception as e:
-                print(f'{prefix} {e}')
-=======
             s = f"{prefix} {r} not found and is required by YOLOv5"
             if install:
                 print(f"{s}, attempting auto-update...")
@@ -315,7 +258,6 @@ def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), insta
                     print(f'{prefix} {e}')
             else:
                 print(f'{s}. Please install and rerun your command.')
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
     if n:  # if packages updated
         source = file.resolve() if 'file' in locals() else requirements
@@ -350,10 +292,6 @@ def check_imshow():
         return False
 
 
-<<<<<<< HEAD
-def check_file(file):
-    # Search/download file (if necessary) and return path
-=======
 def check_suffix(file='yolov5s.pt', suffix=('.pt',), msg=''):
     # Check file(s) for acceptable suffixes
     if file and suffix:
@@ -371,7 +309,6 @@ def check_yaml(file, suffix=('.yaml', '.yml')):
 def check_file(file, suffix=''):
     # Search/download file (if necessary) and return path
     check_suffix(file, suffix)  # optional
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     file = str(file)  # convert to str()
     if Path(file).is_file() or file == '':  # exists
         return file
@@ -422,15 +359,6 @@ def check_dataset(data, autodownload=True):
         if not all(x.exists() for x in val):
             print('\nWARNING: Dataset not found, nonexistent paths: %s' % [str(x) for x in val if not x.exists()])
             if s and autodownload:  # download script
-<<<<<<< HEAD
-                if s.startswith('http') and s.endswith('.zip'):  # URL
-                    f = Path(s).name  # filename
-                    print(f'Downloading {s} ...')
-                    torch.hub.download_url_to_file(s, f)
-                    root = path.parent if 'path' in data else '..'  # unzip directory i.e. '../'
-                    Path(root).mkdir(parents=True, exist_ok=True)  # create root
-                    r = os.system(f'unzip -q {f} -d {root} && rm {f}')  # unzip
-=======
                 root = path.parent if 'path' in data else '..'  # unzip directory i.e. '../'
                 if s.startswith('http') and s.endswith('.zip'):  # URL
                     f = Path(s).name  # filename
@@ -440,25 +368,18 @@ def check_dataset(data, autodownload=True):
                     ZipFile(f).extractall(path=root)  # unzip
                     Path(f).unlink()  # remove zip
                     r = None  # success
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                 elif s.startswith('bash '):  # bash script
                     print(f'Running {s} ...')
                     r = os.system(s)
                 else:  # python script
                     r = exec(s, {'yaml': data})  # return None
-<<<<<<< HEAD
-                print('Dataset autodownload %s\n' % ('success' if r in (0, None) else 'failure'))  # print result
-=======
                 print(f"Dataset autodownload {f'success, saved to {root}' if r in (0, None) else 'failure'}\n")
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
             else:
                 raise Exception('Dataset not found.')
 
     return data  # dictionary
 
 
-<<<<<<< HEAD
-=======
 def url2file(url):
     # Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt
     url = str(Path(url)).replace(':/', '://')  # Pathlib turns :// -> :/
@@ -466,7 +387,6 @@ def url2file(url):
     return file
 
 
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 def download(url, dir='.', unzip=True, delete=True, curl=False, threads=1):
     # Multi-threaded file download and unzip function, used in data.yaml for autodownload
     def download_one(url, dir):
@@ -483,20 +403,11 @@ def download(url, dir='.', unzip=True, delete=True, curl=False, threads=1):
         if unzip and f.suffix in ('.zip', '.gz'):
             print(f'Unzipping {f}...')
             if f.suffix == '.zip':
-<<<<<<< HEAD
-                s = f'unzip -qo {f} -d {dir}'  # unzip -quiet -overwrite
-            elif f.suffix == '.gz':
-                s = f'tar xfz {f} --directory {f.parent}'  # unzip
-            if delete:  # delete zip file after unzip
-                s += f' && rm {f}'
-            os.system(s)
-=======
                 ZipFile(f).extractall(path=dir)  # unzip
             elif f.suffix == '.gz':
                 os.system(f'tar xfz {f} --directory {f.parent}')  # unzip
             if delete:
                 f.unlink()  # remove zip
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)  # make directory
