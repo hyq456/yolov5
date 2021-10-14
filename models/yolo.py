@@ -265,6 +265,8 @@ class Model(nn.Module):
 def parse_model(d, ch):  # model_dict, input_channels(3)
     LOGGER.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     anchors, nc, gd, gw = d['anchors'], d['nc'], d['depth_multiple'], d['width_multiple']
+    # print('anchors %s nc %s gd(depyh_mutiple) %s gw(width_multiple)%s'%(anchors,nc,gd,gw))
+    #anchors [[19, 27, 44, 40, 38, 94], [96, 68, 86, 152, 180, 137], [140, 301, 303, 264, 238, 542], [436, 615, 739, 380, 925, 792]] nc 80 gd(depyh_mutiple) 0.33 gw(width_multiple)0.5
     na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
     no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
 
@@ -296,6 +298,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = max([ch[x] for x in f])
         elif m is Detect:
             args.append([ch[x] for x in f])
+            print(args)
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
         elif m is Contract:
@@ -320,7 +323,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='./hub/yolov5s6.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='./hub/yolov5s6-cbam-less.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     opt = parser.parse_args()

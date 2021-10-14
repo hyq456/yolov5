@@ -568,7 +568,7 @@ class Concat_bifpn(nn.Module):   #pairwise add
         self.epsilon = 0.0001
         self.conv = Conv(c1, c2, 1 ,1 , 0 )
         #self.act= nn.SiLU()  #这里原本用silu，但是用途应该是保证权重是0-1之间 所以改成relu
-        self.act=nn.Relu()
+        self.act=nn.ReLU()
     def forward(self, x): # mutil-layer 1-3 layers
         #print("bifpn:",x.shape)
         if len(x) == 2:
