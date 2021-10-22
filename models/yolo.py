@@ -47,14 +47,17 @@ class Detect(nn.Module):
         self.anchor_grid = [torch.zeros(1)] * self.nl  # init anchor grid
         self.register_buffer('anchors', torch.tensor(anchors).float().view(self.nl, -1, 2))  # shape(nl,na,2)
         self.m = nn.ModuleList(nn.Conv2d(x, self.no * self.na, 1) for x in ch)  # output conv
+        # print(self.m)
         self.inplace = inplace  # use in-place ops (e.g. slice assignment)
 
     def forward(self, x):
         # x = x.copy()  # for profiling
+        # print(len(x))
         z = []  # inference output
         for i in range(self.nl):
             x[i] = self.m[i](x[i])  # conv
             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
+            # print("X"+ str(i)+": "+str(x[i].shape))
             x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
 
             if not self.training:  # inference
@@ -90,7 +93,7 @@ class Model(nn.Module):
         else:  # is *.yaml
             import yaml  # for torch hub
             self.yaml_file = Path(cfg).name
-            with open(cfg, errors='ignore') as f:
+            with open(cfg, errors='ignore',encoding='utf-8') as f:
                 self.yaml = yaml.safe_load(f)  # model dict
 
         # Define model
@@ -101,18 +104,26 @@ class Model(nn.Module):
         if anchors:
             LOGGER.info(f'Overriding model.yaml anchors with anchors={anchors}')
             self.yaml['anchors'] = round(anchors)  # override yaml value
+
+        # 创建网络模型
+        # self.model: 初始化的整个网络模型(包括Detect层结构)
+        # self.save: 所有层结构中from不等于-1的序号，并排好序  [4, 6, 10, 14, 17, 20, 23]
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch])  # model, savelist
         self.names = [str(i) for i in range(self.yaml['nc'])]  # default names
         self.inplace = self.yaml.get('inplace', True)
         # LOGGER.info([x.shape for x in self.forward(torch.zeros(1, ch, 64, 64))])
 
         # Build strides, anchors
+        # 获取Detect模块的stride(相对输入图像的下采样率)和anchors在当前Detect输出的feature map的尺度
         m = self.model[-1]  # Detect()
         if isinstance(m, Detect):
             s = 256  # 2x min stride
             m.inplace = self.inplace
+            # 计算三个feature map下采样的倍率  [8, 16, 32]
             m.stride = torch.tensor([s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))])  # forward
+            # 求出相对当前feature map的anchor大小 如[10, 13]/8 -> [1.25, 1.625]
             m.anchors /= m.stride.view(-1, 1, 1)
+            # 检查anchor顺序与stride顺序是否一致
             check_anchor_order(m)
             self.stride = m.stride
             self._initialize_biases()  # only run once
@@ -143,10 +154,28 @@ class Model(nn.Module):
         return torch.cat(y, 1), None  # augmented inference, train
 
     def forward_once(self, x, profile=False, visualize=False):
+        """
+                :params x: 输入图像
+                :params profile: True 可以做一些性能评估
+                :params feature_vis: True 可以做一些特征可视化
+                :return train: 一个tensor list 存放三个元素   [bs, anchor_num, grid_w, grid_h, xywh+c+20classes]
+                               分别是 [1, 3, 80, 80, 25] [1, 3, 40, 40, 25] [1, 3, 20, 20, 25]
+                        inference: 0 [1, 19200+4800+1200, 25] = [bs, anchor_num*grid_w*grid_h, xywh+c+20classes]
+                                   1 一个tensor list 存放三个元素 [bs, anchor_num, grid_w, grid_h, xywh+c+20classes]
+                                     [1, 3, 80, 80, 25] [1, 3, 40, 40, 25] [1, 3, 20, 20, 25]
+                """
+        # y: 存放着self.save=True的每一层的输出，因为后面的层结构concat等操作要用到
+        # dt: 在profile中做性能评估时使用
         y, dt = [], []  # outputs
         for m in self.model:
+            # 前向推理每一层结构   m.i=index   m.f=from   m.type=类名   m.np=number of params
+            # if not from previous layer   m.f=当前层的输入来自哪一层的输出  s的m.f都是-1
             if m.f != -1:  # if not from previous layer
+                # 这里需要做4个concat操作和1个Detect操作
+                # concat操作如m.f=[-1, 6] x就有两个元素,一个是上一层的输出,另一个是index=6的层的输出 再送到x=m(x)做concat操作
+                # Detect操作m.f=[17, 20, 23] x有三个元素,分别存放第17层第20层第23层的输出 再送到x=m(x)做Detect的forward
                 x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+
 
             if profile:
                 o = thop.profile(m, inputs=(x,), verbose=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
@@ -166,6 +195,10 @@ class Model(nn.Module):
 
         if profile:
             LOGGER.info('%.1fms total' % sum(dt))
+        print(len(x))
+        for i in range(len(x)):
+            print(x[i].shape)
+
         return x
 
     def _descale_pred(self, p, flips, scale, img_size):
@@ -298,7 +331,6 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = max([ch[x] for x in f])
         elif m is Detect:
             args.append([ch[x] for x in f])
-            print(args)
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
         elif m is Contract:
@@ -323,7 +355,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='./hub/yolov5s6-cbam-less.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='./yolov5s.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     opt = parser.parse_args()

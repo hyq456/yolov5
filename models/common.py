@@ -374,6 +374,7 @@ class Detections:
         self.s = shape  # inference BCHW shape
 
     def display(self, pprint=False, show=False, save=False, crop=False, render=False, save_dir=Path('')):
+        crops = []
         for i, (im, pred) in enumerate(zip(self.imgs, self.pred)):
             s = f'image {i + 1}/{len(self.pred)}: {im.shape[0]}x{im.shape[1]} '  # string
             if pred.shape[0]:
@@ -385,9 +386,12 @@ class Detections:
                     for *box, conf, cls in reversed(pred):  # xyxy, confidence, class
                         label = f'{self.names[int(cls)]} {conf:.2f}'
                         if crop:
-                            save_one_box(box, im, file=save_dir / 'crops' / self.names[int(cls)] / self.files[i])
+                            file = save_dir / 'crops' / self.names[int(cls)] / self.files[i] if save else None
+                            crops.append({'box': box, 'conf': conf, 'cls': cls, 'label': label,
+                                          'im': save_one_box(box, im, file=file, save=save)})
                         else:  # all others
-                            im = plot_one_box(box, im, label=label, color=colors(cls))
+                            annotator.box_label(box, label, color=colors(cls))
+                    im = annotator.im
             else:
                 s += '(no detections)'
 
