@@ -22,8 +22,8 @@ from models.experimental import *
 from utils.autoanchor import check_anchor_order
 from utils.general import check_yaml, make_divisible, print_args, set_logging
 from utils.plots import feature_visualization
-from utils.torch_utils import time_sync, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
-    select_device, copy_attr
+from utils.torch_utils import copy_attr, fuse_conv_and_bn, initialize_weights, model_info, scale_img, \
+    select_device, time_sync
 
 try:
     import thop  # for FLOPs computation
@@ -136,24 +136,24 @@ class Model(nn.Module):
 
     def forward(self, x, augment=False, profile=False, visualize=False):
         if augment:
-            return self.forward_augment(x)  # augmented inference, None
-        return self.forward_once(x, profile, visualize)  # single-scale inference, train
+            return self._forward_augment(x)  # augmented inference, None
+        return self._forward_once(x, profile, visualize)  # single-scale inference, train
 
-    def forward_augment(self, x):
+    def _forward_augment(self, x):
         img_size = x.shape[-2:]  # height, width
         s = [1, 0.83, 0.67]  # scales
         f = [None, 3, None]  # flips (2-ud, 3-lr)
         y = []  # outputs
         for si, fi in zip(s, f):
             xi = scale_img(x.flip(fi) if fi else x, si, gs=int(self.stride.max()))
-            yi = self.forward_once(xi)[0]  # forward
+            yi = self._forward_once(xi)[0]  # forward
             # cv2.imwrite(f'img_{si}.jpg', 255 * xi[0].cpu().numpy().transpose((1, 2, 0))[:, :, ::-1])  # save
             yi = self._descale_pred(yi, fi, si, img_size)
             y.append(yi)
         y = self._clip_augmented(y)  # clip augmented tails
         return torch.cat(y, 1), None  # augmented inference, train
 
-    def forward_once(self, x, profile=False, visualize=False):
+    def _forward_once(self, x, profile=False, visualize=False):
         """
                 :params x: 输入图像
                 :params profile: True 可以做一些性能评估
@@ -178,27 +178,13 @@ class Model(nn.Module):
 
 
             if profile:
-                o = thop.profile(m, inputs=(x,), verbose=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
-                t = time_sync()
-                for _ in range(10):
-                    _ = m(x)
-                dt.append((time_sync() - t) * 100)
-                if m == self.model[0]:
-                    LOGGER.info(f"{'time (ms)':>10s} {'GFLOPs':>10s} {'params':>10s}  {'module'}")
-                LOGGER.info(f'{dt[-1]:10.2f} {o:10.2f} {m.np:10.0f}  {m.type}')
+                self._profile_one_layer(m, x, dt)
 
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
 
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
-
-        if profile:
-            LOGGER.info('%.1fms total' % sum(dt))
-        # print(len(x))
-        # for i in range(len(x)):
-        #     print(x[i].shape)
-
         return x
 
     def _descale_pred(self, p, flips, scale, img_size):

@@ -1,14 +1,5 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 """
-<<<<<<< HEAD
-Export a PyTorch model to TorchScript, ONNX, CoreML formats
-
-Usage:
-    $ python path/to/export.py --weights yolov5s.pt --img 640 --batch 1
-"""
-
-import argparse
-=======
 Export a YOLOv5 PyTorch model to TorchScript, ONNX, CoreML, TensorFlow (saved_model, pb, TFLite, TF.js,) formats
 TensorFlow exports authored by https://github.com/zldrobit
 
@@ -32,7 +23,6 @@ TensorFlow.js:
 import argparse
 import os
 import subprocess
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 import sys
 import time
 from pathlib import Path
@@ -41,29 +31,6 @@ import torch
 import torch.nn as nn
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
-<<<<<<< HEAD
-FILE = Path(__file__).absolute()
-sys.path.append(FILE.parents[0].as_posix())  # add yolov5/ to path
-
-from models.common import Conv
-from models.yolo import Detect
-from models.experimental import attempt_load
-from utils.activations import Hardswish, SiLU
-from utils.general import colorstr, check_img_size, check_requirements, file_size, set_logging
-from utils.torch_utils import select_device
-
-
-def export_torchscript(model, img, file, optimize):
-    # TorchScript model export
-    prefix = colorstr('TorchScript:')
-    try:
-        print(f'\n{prefix} starting export with torch {torch.__version__}...')
-        f = file.with_suffix('.torchscript.pt')
-        ts = torch.jit.trace(model, img, strict=False)
-        (optimize_for_mobile(ts) if optimize else ts).save(f)
-        print(f'{prefix} export success, saved as {f} ({file_size(f):.1f} MB)')
-        return ts
-=======
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -90,33 +57,20 @@ def export_torchscript(model, im, file, optimize, prefix=colorstr('TorchScript:'
         (optimize_for_mobile(ts) if optimize else ts).save(f)
 
         print(f'{prefix} export success, saved as {f} ({file_size(f):.1f} MB)')
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     except Exception as e:
         print(f'{prefix} export failure: {e}')
 
 
-<<<<<<< HEAD
-def export_onnx(model, img, file, opset, train, dynamic, simplify):
-    # ONNX model export
-    prefix = colorstr('ONNX:')
-    try:
-        check_requirements(('onnx', 'onnx-simplifier'))
-=======
 def export_onnx(model, im, file, opset, train, dynamic, simplify, prefix=colorstr('ONNX:')):
     # YOLOv5 ONNX export
     try:
         check_requirements(('onnx',))
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         import onnx
 
         print(f'\n{prefix} starting export with onnx {onnx.__version__}...')
         f = file.with_suffix('.onnx')
-<<<<<<< HEAD
-        torch.onnx.export(model, img, f, verbose=False, opset_version=opset,
-=======
 
         torch.onnx.export(model, im, f, verbose=False, opset_version=opset,
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                           training=torch.onnx.TrainingMode.TRAINING if train else torch.onnx.TrainingMode.EVAL,
                           do_constant_folding=not train,
                           input_names=['images'],
@@ -133,21 +87,14 @@ def export_onnx(model, im, file, opset, train, dynamic, simplify, prefix=colorst
         # Simplify
         if simplify:
             try:
-<<<<<<< HEAD
-=======
                 check_requirements(('onnx-simplifier',))
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                 import onnxsim
 
                 print(f'{prefix} simplifying with onnx-simplifier {onnxsim.__version__}...')
                 model_onnx, check = onnxsim.simplify(
                     model_onnx,
                     dynamic_input_shape=dynamic,
-<<<<<<< HEAD
-                    input_shapes={'images': list(img.shape)} if dynamic else None)
-=======
                     input_shapes={'images': list(im.shape)} if dynamic else None)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                 assert check, 'assert check failed'
                 onnx.save(model_onnx, f)
             except Exception as e:
@@ -158,27 +105,15 @@ def export_onnx(model, im, file, opset, train, dynamic, simplify, prefix=colorst
         print(f'{prefix} export failure: {e}')
 
 
-<<<<<<< HEAD
-def export_coreml(model, img, file):
-    # CoreML model export
-    prefix = colorstr('CoreML:')
-=======
 def export_coreml(model, im, file, prefix=colorstr('CoreML:')):
     # YOLOv5 CoreML export
     ct_model = None
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     try:
         check_requirements(('coremltools',))
         import coremltools as ct
 
         print(f'\n{prefix} starting export with coremltools {ct.__version__}...')
         f = file.with_suffix('.mlmodel')
-<<<<<<< HEAD
-        model.train()  # CoreML exports should be placed in model.train() mode
-        ts = torch.jit.trace(model, img, strict=False)  # TorchScript model
-        model = ct.convert(ts, inputs=[ct.ImageType('image', shape=img.shape, scale=1 / 255.0, bias=[0, 0, 0])])
-        model.save(f)
-=======
 
         model.train()  # CoreML exports should be placed in model.train() mode
         ts = torch.jit.trace(model, im, strict=False)  # TorchScript model
@@ -238,16 +173,11 @@ def export_pb(keras_model, im, file, prefix=colorstr('TensorFlow GraphDef:')):
         frozen_func.graph.as_graph_def()
         tf.io.write_graph(graph_or_graph_def=frozen_func.graph, logdir=str(f.parent), name=f.name, as_text=False)
 
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         print(f'{prefix} export success, saved as {f} ({file_size(f):.1f} MB)')
     except Exception as e:
         print(f'\n{prefix} export failure: {e}')
 
 
-<<<<<<< HEAD
-def run(weights='./yolov5s.pt',  # weights path
-        img_size=(640, 640),  # image (height, width)
-=======
 def export_tflite(keras_model, im, file, int8, data, ncalib, prefix=colorstr('TensorFlow Lite:')):
     # YOLOv5 TensorFlow Lite export
     try:
@@ -319,7 +249,6 @@ def export_tfjs(keras_model, im, file, prefix=colorstr('TensorFlow.js:')):
 def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
         weights=ROOT / 'yolov5s.pt',  # weights path
         imgsz=(640, 640),  # image (height, width)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
         batch_size=1,  # batch size
         device='cpu',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         include=('torchscript', 'onnx', 'coreml'),  # include formats
@@ -327,16 +256,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
         inplace=False,  # set YOLOv5 Detect() inplace=True
         train=False,  # model.train() mode
         optimize=False,  # TorchScript: optimize for mobile
-<<<<<<< HEAD
-        dynamic=False,  # ONNX: dynamic axes
-        simplify=False,  # ONNX: simplify model
-        opset=12,  # ONNX: opset version
-        ):
-    t = time.time()
-    include = [x.lower() for x in include]
-    img_size *= 2 if len(img_size) == 1 else 1  # expand
-    file = Path(weights)
-=======
         int8=False,  # CoreML/TF INT8 quantization
         dynamic=False,  # ONNX/TF: dynamic axes
         simplify=False,  # ONNX: simplify model
@@ -351,30 +270,10 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     tf_exports = list(x in include for x in ('saved_model', 'pb', 'tflite', 'tfjs'))  # TensorFlow exports
     imgsz *= 2 if len(imgsz) == 1 else 1  # expand
     file = Path(url2file(weights) if str(weights).startswith(('http:/', 'https:/')) else weights)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
     # Load PyTorch model
     device = select_device(device)
     assert not (device.type == 'cpu' and half), '--half only compatible with GPU export, i.e. use --device 0'
-<<<<<<< HEAD
-    model = attempt_load(weights, map_location=device)  # load FP32 model
-    names = model.names
-
-    # Input
-    gs = int(max(model.stride))  # grid size (max stride)
-    img_size = [check_img_size(x, gs) for x in img_size]  # verify img_size are gs-multiples
-    img = torch.zeros(batch_size, 3, *img_size).to(device)  # image size(1,3,320,192) iDetection
-
-    # Update model
-    if half:
-        img, model = img.half(), model.half()  # to FP16
-    model.train() if train else model.eval()  # training mode = no Detect() layer grid construction
-    for k, m in model.named_modules():
-        if isinstance(m, Conv):  # assign export-friendly activations
-            if isinstance(m.act, nn.Hardswish):
-                m.act = Hardswish()
-            elif isinstance(m.act, nn.SiLU):
-=======
     model = attempt_load(weights, map_location=device, inplace=True, fuse=True)  # load FP32 model
     nc, names = model.nc, model.names  # number of classes, class names
 
@@ -390,7 +289,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     for k, m in model.named_modules():
         if isinstance(m, Conv):  # assign export-friendly activations
             if isinstance(m.act, nn.SiLU):
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
                 m.act = SiLU()
         elif isinstance(m, Detect):
             m.inplace = inplace
@@ -398,18 +296,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
             # m.forward = m.forward_export  # assign forward (optional)
 
     for _ in range(2):
-<<<<<<< HEAD
-        y = model(img)  # dry runs
-    print(f"\n{colorstr('PyTorch:')} starting from {weights} ({file_size(weights):.1f} MB)")
-
-    # Exports
-    if 'torchscript' in include:
-        export_torchscript(model, img, file, optimize)
-    if 'onnx' in include:
-        export_onnx(model, img, file, opset, train, dynamic, simplify)
-    if 'coreml' in include:
-        export_coreml(model, img, file)
-=======
         y = model(im)  # dry runs
     print(f"\n{colorstr('PyTorch:')} starting from {file} ({file_size(file):.1f} MB)")
 
@@ -434,7 +320,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
             export_tflite(model, im, file, int8=int8, data=data, ncalib=100)
         if tfjs:
             export_tfjs(model, im, file)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 
     # Finish
     print(f'\nExport complete ({time.time() - t:.2f}s)'
@@ -444,29 +329,15 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-<<<<<<< HEAD
-    parser.add_argument('--weights', type=str, default='./yolov5s.pt', help='weights path')
-    parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='image (height, width)')
-    parser.add_argument('--batch-size', type=int, default=1, help='batch size')
-    parser.add_argument('--device', default='cpu', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--include', nargs='+', default=['torchscript', 'onnx', 'coreml'], help='include formats')
-=======
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
     parser.add_argument('--weights', type=str, default=ROOT / 'yolov5s.pt', help='weights path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640, 640], help='image (h, w)')
     parser.add_argument('--batch-size', type=int, default=1, help='batch size')
     parser.add_argument('--device', default='cpu', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     parser.add_argument('--half', action='store_true', help='FP16 half-precision export')
     parser.add_argument('--inplace', action='store_true', help='set YOLOv5 Detect() inplace=True')
     parser.add_argument('--train', action='store_true', help='model.train() mode')
     parser.add_argument('--optimize', action='store_true', help='TorchScript: optimize for mobile')
-<<<<<<< HEAD
-    parser.add_argument('--dynamic', action='store_true', help='ONNX: dynamic axes')
-    parser.add_argument('--simplify', action='store_true', help='ONNX: simplify model')
-    parser.add_argument('--opset', type=int, default=12, help='ONNX: opset version')
-    opt = parser.parse_args()
-=======
     parser.add_argument('--int8', action='store_true', help='CoreML/TF INT8 quantization')
     parser.add_argument('--dynamic', action='store_true', help='ONNX/TF: dynamic axes')
     parser.add_argument('--simplify', action='store_true', help='ONNX: simplify model')
@@ -480,16 +351,11 @@ def parse_opt():
                         help='available formats are (torchscript, onnx, coreml, saved_model, pb, tflite, tfjs)')
     opt = parser.parse_args()
     print_args(FILE.stem, opt)
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     return opt
 
 
 def main(opt):
     set_logging()
-<<<<<<< HEAD
-    print(colorstr('export: ') + ', '.join(f'{k}={v}' for k, v in vars(opt).items()))
-=======
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
     run(**vars(opt))
 
 
