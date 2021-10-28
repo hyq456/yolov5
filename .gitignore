@@ -45,11 +45,7 @@ VOC/
 # Neural Network weights -----------------------------------------------------------------------------------------------
 *.weights
 *.pt
-<<<<<<< HEAD
-*.onnx
-*.mlmodel
-*.torchscript
-=======
+*.pth
 *.pb
 *.onnx
 *.mlmodel
@@ -58,7 +54,6 @@ VOC/
 *.h5
 *_saved_model/
 *_web_model/
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 darknet53.conv.74
 yolov3-tiny.conv.15
 
@@ -87,11 +82,7 @@ sdist/
 var/
 wheels/
 *.egg-info/
-<<<<<<< HEAD
-wandb/
-=======
 /wandb/
->>>>>>> f01eeeed0c60ee4d6765925190c3e910d115a187
 .installed.cfg
 *.egg
 
