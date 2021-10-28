@@ -128,9 +128,9 @@ def run(data,
         imgsz = check_img_size(imgsz, s=gs)  # check image size
 
         #Load classfy model
-        check_suffix(classfy_weight,'.pt')
+        # check_suffix(classfy_weight,'.pt')
         modelc = load_classifier(name='resnet101', n=4)  # initialize
-        modelc.load_state_dict(torch.load(classfy_weight, map_location=device))
+        modelc.load_state_dict(torch.load(r'./weights/best_model_wts.pt', map_location=device))
         modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
@@ -170,6 +170,9 @@ def run(data,
     jdict, stats, ap, ap_class = [], [], [], []
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
         t1 = time_sync()
+        # im0s = np.transpose(img.numpy(), (1, 2, 0))
+        # print(img.shape)
+        # print(shapes)
         img = img.to(device, non_blocking=True)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -192,7 +195,7 @@ def run(data,
         t3 = time_sync()
         out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
         if second_stage:
-            pred = apply_classifier(out, modelc, img, im0s)
+            out = apply_classifier(out, modelc, img, im0s)
         dt[2] += time_sync() - t3
 
         # Statistics per image

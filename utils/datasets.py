@@ -566,10 +566,16 @@ class LoadImagesAndLabels(Dataset):
         else:
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
-
-            # Letterbox
+            # print("before letterbox" + str(img.shape) +" " + str(h0) +" " +   str(w0) +" " +   str(h)   +" " +  str(w))
+            # cv2.imshow('before', img)
+            # cv2.waitKey(0)
+            # Letterbox.
+            # 这一步回将图片变形至符合多个步幅约束的大小 例(480, 640, 3) --> (512,704,3)
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
             img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            # print("after letterbox " + str(img.shape))
+            # cv2.imshow('after', img)
+            # cv2.waitKey(0)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
             labels = self.labels[index].copy()
@@ -672,6 +678,7 @@ def load_image(self, i):
         if r != 1:  # if sizes are not equal
             im = cv2.resize(im, (int(w0 * r), int(h0 * r)),
                             interpolation=cv2.INTER_AREA if r < 1 and not self.augment else cv2.INTER_LINEAR)
+        print("path = " + path + " H0.W0 = "+str(h0) +", " +  str(w0) + " r = " + str(r) + " w,h = " + str(im.shape[:2]))
         return im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
     else:
         return self.imgs[i], self.img_hw0[i], self.img_hw[i]  # im, hw_original, hw_resized
