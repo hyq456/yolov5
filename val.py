@@ -27,10 +27,10 @@ from models.experimental import attempt_load
 from utils.datasets import create_dataloader
 from utils.general import coco80_to_coco91_class, check_dataset, check_img_size, check_requirements, \
     check_suffix, check_yaml, box_iou, non_max_suppression, scale_coords, xyxy2xywh, xywh2xyxy, set_logging, \
-    increment_path, colorstr, print_args
+    increment_path, colorstr, print_args, apply_classifier
 from utils.metrics import ap_per_class, ConfusionMatrix
 from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync
+from utils.torch_utils import select_device, time_sync, load_classifier
 from utils.callbacks import Callbacks
 
 
@@ -106,6 +106,8 @@ def run(data,
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
+        second_stage = False,
+        classfy_weight = None
         ):
     # Initialize/load model and set device
     training = model is not None
@@ -124,6 +126,12 @@ def run(data,
         model = attempt_load(weights, map_location=device)  # load FP32 model
         gs = max(int(model.stride.max()), 32)  # grid size (max stride)
         imgsz = check_img_size(imgsz, s=gs)  # check image size
+
+        #Load classfy model
+        check_suffix(classfy_weight,'.pt')
+        modelc = load_classifier(name='resnet101', n=4)  # initialize
+        modelc.load_state_dict(torch.load(classfy_weight, map_location=device))
+        modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
         # if device.type != 'cpu' and torch.cuda.device_count() > 1:
@@ -183,6 +191,8 @@ def run(data,
         lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
         t3 = time_sync()
         out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
+        if second_stage:
+            pred = apply_classifier(out, modelc, img, im0s)
         dt[2] += time_sync() - t3
 
         # Statistics per image
@@ -318,6 +328,7 @@ def parse_opt():
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
+    parser.add_argument('--second-stage',action='store_true',help="use second stage classfy module")
     opt = parser.parse_args()
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')

@@ -74,7 +74,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
     # Load model
     w = str(weights[0] if isinstance(weights, list) else weights)
-    classify, suffix, suffixes = False, Path(w).suffix.lower(), ['.pt', '.onnx', '.tflite', '.pb', '']
+    classify, suffix, suffixes = True, Path(w).suffix.lower(), ['.pt', '.onnx', '.tflite', '.pb', '']
     check_suffix(w, suffixes)  # check weights have acceptable suffix
     pt, onnx, tflite, pb, saved_model = (suffix == x for x in suffixes)  # backend booleans
     stride, names = 64, [f'class{i}' for i in range(1000)]  # assign defaults
@@ -85,8 +85,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         if half:
             model.half()  # to FP16
         if classify:  # second-stage classifier
-            modelc = load_classifier(name='resnet50', n=2)  # initialize
-            modelc.load_state_dict(torch.load('resnet50.pt', map_location=device)['model']).to(device).eval()
+            modelc = load_classifier(name='resnet101', n=4)  # initialize
+            modelc.load_state_dict(torch.load('./weights/best_model_wts.pt', map_location=device))
+            modelc.to(device).eval()
     elif onnx:
         if dnn:
             check_requirements(('opencv-python>=4.5.4',))

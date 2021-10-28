@@ -195,9 +195,9 @@ class Model(nn.Module):
 
         if profile:
             LOGGER.info('%.1fms total' % sum(dt))
-        print(len(x))
-        for i in range(len(x)):
-            print(x[i].shape)
+        # print(len(x))
+        # for i in range(len(x)):
+        #     print(x[i].shape)
 
         return x
 
