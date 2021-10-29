@@ -27,7 +27,7 @@ from models.experimental import attempt_load
 from utils.datasets import create_dataloader
 from utils.general import coco80_to_coco91_class, check_dataset, check_img_size, check_requirements, \
     check_suffix, check_yaml, box_iou, non_max_suppression, scale_coords, xyxy2xywh, xywh2xyxy, set_logging, \
-    increment_path, colorstr, print_args, apply_classifier
+    increment_path, colorstr, print_args, apply_classifier, my_apply_classifier
 from utils.metrics import ap_per_class, ConfusionMatrix
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, time_sync, load_classifier
@@ -106,7 +106,7 @@ def run(data,
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
-        second_stage = False,
+        second_stage = True,
         classfy_weight = None
         ):
     # Initialize/load model and set device
@@ -128,10 +128,11 @@ def run(data,
         imgsz = check_img_size(imgsz, s=gs)  # check image size
 
         #Load classfy model
-        # check_suffix(classfy_weight,'.pt')
-        modelc = load_classifier(name='resnet101', n=4)  # initialize
-        modelc.load_state_dict(torch.load(r'./weights/best_model_wts.pt', map_location=device))
-        modelc.to(device).eval()
+        if second_stage:
+            # check_suffix(classfy_weight,'.pt')
+            modelc = load_classifier(name='resnet101', n=4)  # initialize
+            modelc.load_state_dict(torch.load(r'./weights/best_model_wts.pt', map_location=device))
+            modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
         # if device.type != 'cpu' and torch.cuda.device_count() > 1:
@@ -190,17 +191,19 @@ def run(data,
             loss += compute_loss([x.float() for x in train_out], targets)[1]  # box, obj, cls
 
         # Run NMS
+        # 将真实框target的xywh(因为target是在labelimg中做了归一化的)映射到img(test)尺寸
         targets[:, 2:] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
         lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
         t3 = time_sync()
         out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
-        if second_stage:
-            out = apply_classifier(out, modelc, img, im0s)
+
         dt[2] += time_sync() - t3
 
         # Statistics per image
         for si, pred in enumerate(out):
+            # 获取第si张图片的gt标签信息 包括class, x, y, w, h    target[:, 0]为标签属于哪张图片的编号
             labels = targets[targets[:, 0] == si, 1:]
+            # print(labels)
             nl = len(labels)
             tcls = labels[:, 0].tolist() if nl else []  # target class
             path, shape = Path(paths[si]), shapes[si][0]
@@ -221,6 +224,13 @@ def run(data,
             if nl:
                 tbox = xywh2xyxy(labels[:, 1:5])  # target boxes
                 scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
+                # print(tbox)
+                # TODO classfy
+                if second_stage:
+                    pred_class = my_apply_classifier(modelc,path,tbox)
+                    print("predn.shape:"+ str(predn.shape))
+                    print("pred_class.shape: " + str(pred_class.shape))
+                    predn[:,5] = pred_class
                 labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
                 correct = process_batch(predn, labelsn, iouv)
                 if plots:
@@ -312,8 +322,12 @@ def run(data,
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
+    # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
+    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_hr.yaml', help='dataset.yaml path')
+    # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default='./runs/best.pt', help='model.pt path(s)')
+
+
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.001, help='confidence threshold')

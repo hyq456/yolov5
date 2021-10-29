@@ -792,6 +792,30 @@ def apply_classifier(x, model, img, im0):
 
     return x
 
+def my_apply_classifier(model,img,tbox):
+
+    im = cv2.imread(str(img))
+    # print(tbox.tolist())
+    # print(len(tbox.tolist()))
+    ims = []
+    for i , tboxi in enumerate(tbox):
+        x1, y1, x2, y2 = tboxi.tolist()
+        im_crop = im[round(y1):round((y2)), round(x1):round(x2)]
+        im_crop = cv2.resize(im_crop,(224,224))
+        im_crop = im_crop[:,:,::-1].transpose(2,0,1) # BGR to RGB, to 3x416x416
+        im_crop = np.ascontiguousarray(im_crop, dtype=np.float32)  # uint8 to float32
+        im_crop /= 255.0  # 0 - 255 to 0.0 - 1.0
+        ims.append(im_crop)
+    # x1,y1,x2,y2 = tbox.tolist()
+    # im = im[round(y1):round((y2)), round(x1):round(x2)]
+    # im = im.crop(tbox.tolist())
+    # im = cv2.resize(im, (224, 224))
+    # im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+    # im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
+    # im /= 255.0  # 0 - 255 to 0.0 - 1.0
+    pred = model(torch.Tensor(ims).to(tbox.device)).argmax(1)
+    return pred
+
 
 def save_one_box(xyxy, im, file='image.jpg', gain=1.02, pad=10, square=False, BGR=False, save=True):
     # Save image crop as {file} with crop size multiple {gain} and {pad} pixels. Save and/or return crop
