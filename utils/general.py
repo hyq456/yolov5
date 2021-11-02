@@ -795,12 +795,21 @@ def apply_classifier(x, model, img, im0):
 def my_apply_classifier(model,img,tbox):
 
     im = cv2.imread(str(img))
-    # print(tbox.tolist())
     # print(len(tbox.tolist()))
     ims = []
     for i , tboxi in enumerate(tbox):
         x1, y1, x2, y2 = tboxi.tolist()
-        im_crop = im[round(y1):round((y2)), round(x1):round(x2)]
+        if x1 == x2:
+            if x2+1 < im.shape[1]:
+                x2 = x2+1
+            else:
+                x1 = x1 - 1
+        elif y1 == y2:
+            if y2+1 < im.shape[0]:
+                y2 = y2 + 1
+            else:
+                y1 = y1 - 1
+        im_crop = im[math.ceil(y1):math.ceil((y2)), math.ceil(x1):math.ceil(x2)]
         im_crop = cv2.resize(im_crop,(224,224))
         im_crop = im_crop[:,:,::-1].transpose(2,0,1) # BGR to RGB, to 3x416x416
         im_crop = np.ascontiguousarray(im_crop, dtype=np.float32)  # uint8 to float32

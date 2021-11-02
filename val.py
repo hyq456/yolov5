@@ -217,20 +217,36 @@ def run(data,
             # Predictions
             if single_cls:
                 pred[:, 5] = 0
+            # pred (Array[N, 6]), x1, y1, x2, y2, conf, class
             predn = pred.clone()
             scale_coords(img[si].shape[1:], predn[:, :4], shape, shapes[si][1])  # native-space pred
-
+            # print(predn[:,:4])
             # Evaluate
             if nl:
-                tbox = xywh2xyxy(labels[:, 1:5])  # target boxes
+                tbox = xywh2xyxy(labels[:, 1:5])  # target boxes tbox是从文件中读出的实际的目标框位置
                 scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
                 # print(tbox)
                 # TODO classfy
                 if second_stage:
-                    pred_class = my_apply_classifier(modelc,path,tbox)
-                    print("predn.shape:"+ str(predn.shape))
-                    print("pred_class.shape: " + str(pred_class.shape))
-                    predn[:,5] = pred_class
+                    pbox = predn[:,:4]
+                    # print(pbox)
+                    pred_class = my_apply_classifier(modelc,path,pbox)
+                    # print("pred" + str(predn))
+                    # print("predn.shape:"+ str(predn.shape))
+                    # print("pred_class.shape: " + str(pred_class.shape))
+                    # 正常操作
+                    # predn[:,5] = pred_class
+                    # 两个模型标签序号不对应的弱智操作
+                    
+                    for pi, predi in enumerate(pred_class):
+                        if pred_class[pi].item() == 0:
+                            predn[pi,5] = 1
+                        elif pred_class[pi].item() == 1:
+                            predn[pi,5] = 3
+                        elif pred_class[pi].item() == 2:
+                            predn[pi,5] = 0
+                        elif pred_class[pi].item() == 3:
+                            predn[pi,5] = 2
                 labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
                 correct = process_batch(predn, labelsn, iouv)
                 if plots:
