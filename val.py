@@ -17,6 +17,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from utils.my_utils import save_classfy_error
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -27,7 +29,7 @@ from models.experimental import attempt_load
 from utils.datasets import create_dataloader
 from utils.general import box_iou, coco80_to_coco91_class, colorstr, check_dataset, check_img_size, \
     check_requirements, check_suffix, check_yaml, increment_path, non_max_suppression, print_args, scale_coords, \
-    xyxy2xywh, xywh2xyxy, LOGGER
+    xyxy2xywh, xywh2xyxy, LOGGER, my_apply_classifier
 from utils.metrics import ap_per_class, ConfusionMatrix
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, time_sync, load_classifier
@@ -219,19 +221,13 @@ def run(data,
             if nl:
                 tbox = xywh2xyxy(labels[:, 1:5])  # target boxes tbox是从文件中读出的实际的目标框位置
                 scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
-                # print(tbox)
-                # TODO classfy
                 if second_stage:
                     pbox = predn[:,:4]
                     # print(pbox)
                     pred_class = my_apply_classifier(modelc,path,pbox)
-                    # print("pred" + str(predn))
-                    # print("predn.shape:"+ str(predn.shape))
-                    # print("pred_class.shape: " + str(pred_class.shape))
                     # 正常操作
                     # predn[:,5] = pred_class
                     # 两个模型标签序号不对应的弱智操作
-
                     for pi, predi in enumerate(pred_class):
                         if pred_class[pi].item() == 0:
                             predn[pi,5] = 1
@@ -241,6 +237,7 @@ def run(data,
                             predn[pi,5] = 0
                         elif pred_class[pi].item() == 3:
                             predn[pi,5] = 2
+                    save_classfy_error(pred_class,pbox,labels,path,save_path='./runs/error')
                 labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
                 correct = process_batch(predn, labelsn, iouv)
                 if plots:
