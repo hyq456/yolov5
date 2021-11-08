@@ -85,7 +85,7 @@ def process_batch(detections, labels, iouv):
 @torch.no_grad()
 def run(data,
         weights=None,  # model.pt path(s)
-        batch_size=32,  # batch size
+        batch_size=8,  # batch size
         imgsz=640,  # inference size (pixels)
         conf_thres=0.001,  # confidence threshold
         iou_thres=0.6,  # NMS IoU threshold
@@ -122,6 +122,7 @@ def run(data,
         # Directories
         save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
         (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+        (save_dir / 'errors' if second_stage else save_dir).mkdir(parents=True, exist_ok=True)  # make error classfy dir
 
         # Load model
         check_suffix(weights, '.pt')
@@ -132,8 +133,8 @@ def run(data,
         #Load classfy model
         if second_stage:
             # check_suffix(classfy_weight,'.pt')
-            modelc = load_classifier(name='resnet101', n=4)  # initialize
-            modelc.load_state_dict(torch.load(r'./weights/best_model_wts.pt', map_location=device))
+            modelc = load_classifier(name='resnet18', n=4)  # initialize
+            modelc.load_state_dict(torch.load(r'./weights/res18.pt', map_location=device))
             modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
@@ -221,6 +222,7 @@ def run(data,
             if nl:
                 tbox = xywh2xyxy(labels[:, 1:5])  # target boxes tbox是从文件中读出的实际的目标框位置
                 scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
+                labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
                 if second_stage:
                     pbox = predn[:,:4]
                     # print(pbox)
@@ -237,8 +239,8 @@ def run(data,
                             predn[pi,5] = 0
                         elif pred_class[pi].item() == 3:
                             predn[pi,5] = 2
-                    save_classfy_error(pred_class,pbox,labels,path,save_path='./runs/error')
-                labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
+                    save_classfy_error(predn,labelsn,path,save_path=save_dir / 'errors')
+
                 correct = process_batch(predn, labelsn, iouv)
                 if plots:
                     confusion_matrix.process_batch(predn, labelsn)
@@ -333,8 +335,6 @@ def parse_opt():
     parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_hr.yaml', help='dataset.yaml path')
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
     parser.add_argument('--weights', nargs='+', type=str, default='./runs/best.pt', help='model.pt path(s)')
-
-
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.001, help='confidence threshold')
@@ -352,6 +352,7 @@ def parse_opt():
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
+    parser.add_argument('--second-stage',action='store_true',help='use one classfy model output instead of yolo')
     opt = parser.parse_args()
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')
