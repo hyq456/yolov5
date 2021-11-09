@@ -26,14 +26,14 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.experimental import attempt_load
-from utils.datasets import create_dataloader
-from utils.general import box_iou, coco80_to_coco91_class, colorstr, check_dataset, check_img_size, \
-    check_requirements, check_suffix, check_yaml, increment_path, non_max_suppression, print_args, scale_coords, \
-    xyxy2xywh, xywh2xyxy, LOGGER, my_apply_classifier
-from utils.metrics import ap_per_class, ConfusionMatrix
-from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync, load_classifier
 from utils.callbacks import Callbacks
+from utils.datasets import create_dataloader
+from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_suffix, check_yaml,
+                           coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
+                           scale_coords, xywh2xyxy, xyxy2xywh)
+from utils.metrics import ConfusionMatrix, ap_per_class
+from utils.plots import output_to_target, plot_images, plot_val_study
+from utils.torch_utils import select_device, time_sync
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -85,7 +85,7 @@ def process_batch(detections, labels, iouv):
 @torch.no_grad()
 def run(data,
         weights=None,  # model.pt path(s)
-        batch_size=8,  # batch size
+        batch_size=32,  # batch size
         imgsz=640,  # inference size (pixels)
         conf_thres=0.001,  # confidence threshold
         iou_thres=0.6,  # NMS IoU threshold
@@ -176,7 +176,7 @@ def run(data,
         t1 = time_sync()
         img = img.to(device, non_blocking=True)
         img = img.half() if half else img.float()  # uint8 to fp16/32
-        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        img /= 255  # 0 - 255 to 0.0 - 1.0
         targets = targets.to(device)
         nb, _, height, width = img.shape  # batch size, channels, height, width
         t2 = time_sync()
@@ -365,6 +365,8 @@ def main(opt):
     check_requirements(requirements=ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
 
     if opt.task in ('train', 'val', 'test'):  # run normally
+        if opt.conf_thres > 0.001:  # https://github.com/ultralytics/yolov5/issues/1466
+            LOGGER.info(f'WARNING: confidence threshold {opt.conf_thres} >> 0.001 will produce invalid mAP values.')
         run(**vars(opt))
 
     elif opt.task == 'speed':  # speed benchmarks

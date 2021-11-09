@@ -45,7 +45,7 @@ ROOT = FILE.parents[1]  # YOLOv5 root directory
 def set_logging(name=None, verbose=True):
     # Sets level and returns logger
     rank = int(os.getenv('RANK', -1))  # rank in world for Multi-GPU trainings
-    logging.basicConfig(format="%(message)s", level=logging.INFO if (verbose and rank in (-1, 0)) else logging.WARN)
+    logging.basicConfig(format="%(message)s", level=logging.INFO if (verbose and rank in (-1, 0)) else logging.WARNING)
     return logging.getLogger(name)
 
 
@@ -81,6 +81,19 @@ class Timeout(contextlib.ContextDecorator):
             return True
 
 
+class WorkingDirectory(contextlib.ContextDecorator):
+    # Usage: @WorkingDirectory(dir) decorator or 'with WorkingDirectory(dir):' context manager
+    def __init__(self, new_dir):
+        self.dir = new_dir  # new dir
+        self.cwd = Path.cwd().resolve()  # current dir
+
+    def __enter__(self):
+        os.chdir(self.dir)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.chdir(self.cwd)
+
+
 def try_except(func):
     # try-except function. Usage: @try_except decorator
     def handler(*args, **kwargs):
@@ -110,6 +123,11 @@ def init_seeds(seed=0):
     np.random.seed(seed)
     torch.manual_seed(seed)
     cudnn.benchmark, cudnn.deterministic = (False, True) if seed == 0 else (True, False)
+
+
+def intersect_dicts(da, db, exclude=()):
+    # Dictionary intersection of matching keys and shapes, omitting 'exclude' keys, using da values
+    return {k: v for k, v in da.items() if k in db and not any(x in k for x in exclude) and v.shape == db[k].shape}
 
 
 def get_latest_run(search_dir='.'):
@@ -203,6 +221,7 @@ def check_online():
 
 
 @try_except
+@WorkingDirectory(ROOT)
 def check_git_status():
     # Recommend 'git pull' if code is out of date
     msg = ', for updates see https://github.com/ultralytics/yolov5'
@@ -324,9 +343,12 @@ def check_file(file, suffix=''):
     elif file.startswith(('http:/', 'https:/')):  # download
         url = str(Path(file)).replace(':/', '://')  # Pathlib turns :// -> :/
         file = Path(urllib.parse.unquote(file).split('?')[0]).name  # '%2F' to '/', split https://url.com/file.txt?auth
-        print(f'Downloading {url} to {file}...')
-        torch.hub.download_url_to_file(url, file)
-        assert Path(file).exists() and Path(file).stat().st_size > 0, f'File download failed: {url}'  # check
+        if Path(file).is_file():
+            print(f'Found {url} locally at {file}')  # file already exists
+        else:
+            print(f'Downloading {url} to {file}...')
+            torch.hub.download_url_to_file(url, file)
+            assert Path(file).exists() and Path(file).stat().st_size > 0, f'File download failed: {url}'  # check
         return file
     else:  # search
         files = []
@@ -779,7 +801,6 @@ def apply_classifier(x, model, img, im0):
             scale_coords(img.shape[2:], d[:, :4], im0[i].shape)
 
             # Classes
-            # print(type(d[:,5]))
             pred_cls1 = d[:, 5].long()
             ims = []
             for j, a in enumerate(d):  # per item
@@ -789,77 +810,25 @@ def apply_classifier(x, model, img, im0):
 
                 im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
                 im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
-                im /= 255.0  # 0 - 255 to 0.0 - 1.0
+                im /= 255  # 0 - 255 to 0.0 - 1.0
                 ims.append(im)
 
             pred_cls2 = model(torch.Tensor(ims).to(d.device)).argmax(1)  # classifier prediction
-            # print(d.dtype)
-            # x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
-            x[i][:,5] = pred_cls2
+            x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
 
     return x
-
-def my_apply_classifier(model,img,tbox):
-
-    im = cv2.imread(str(img))
-    # print(len(tbox.tolist()))
-    ims = []
-    for i , tboxi in enumerate(tbox):
-        x1, y1, x2, y2 = tboxi.tolist()
-        if x1 == x2:
-            if x2+1 < im.shape[1]:
-                x2 = x2+1
-            else:
-                x1 = x1 - 1
-        elif y1 == y2:
-            if y2+1 < im.shape[0]:
-                y2 = y2 + 1
-            else:
-                y1 = y1 - 1
-        im_crop = im[math.ceil(y1):math.ceil((y2)), math.ceil(x1):math.ceil(x2)]
-        im_crop = cv2.resize(im_crop,(224,224))
-        im_crop = im_crop[:,:,::-1].transpose(2,0,1) # BGR to RGB, to 3x416x416
-        im_crop = np.ascontiguousarray(im_crop, dtype=np.float32)  # uint8 to float32
-        im_crop /= 255.0  # 0 - 255 to 0.0 - 1.0
-        ims.append(im_crop)
-    # x1,y1,x2,y2 = tbox.tolist()
-    # im = im[round(y1):round((y2)), round(x1):round(x2)]
-    # im = im.crop(tbox.tolist())
-    # im = cv2.resize(im, (224, 224))
-    # im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
-    # im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
-    # im /= 255.0  # 0 - 255 to 0.0 - 1.0
-    pred = model(torch.Tensor(ims).to(tbox.device)).argmax(1)
-    return pred
-
-
-def save_one_box(xyxy, im, file='image.jpg', gain=1.02, pad=10, square=False, BGR=False, save=True):
-    # Save image crop as {file} with crop size multiple {gain} and {pad} pixels. Save and/or return crop
-    xyxy = torch.tensor(xyxy).view(-1, 4)
-    b = xyxy2xywh(xyxy)  # boxes
-    if square:
-        b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # attempt rectangle to square
-    b[:, 2:] = b[:, 2:] * gain + pad  # box wh * gain + pad
-    xyxy = xywh2xyxy(b).long()
-    clip_coords(xyxy, im.shape)
-    crop = im[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2]), ::(1 if BGR else -1)]
-    if save:
-        cv2.imwrite(str(increment_path(file, mkdir=True).with_suffix('.jpg')), crop)
-    return crop
 
 
 def increment_path(path, exist_ok=False, sep='', mkdir=False):
     # Increment file or directory path, i.e. runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc.
     path = Path(path)  # os-agnostic
     if path.exists() and not exist_ok:
-        suffix = path.suffix
-        path = path.with_suffix('')
+        path, suffix = (path.with_suffix(''), path.suffix) if path.is_file() else (path, '')
         dirs = glob.glob(f"{path}{sep}*")  # similar paths
         matches = [re.search(rf"%s{sep}(\d+)" % path.stem, d) for d in dirs]
         i = [int(m.groups()[0]) for m in matches if m]  # indices
         n = max(i) + 1 if i else 2  # increment number
-        path = Path(f"{path}{sep}{n}{suffix}")  # update path
-    dir = path if path.suffix == '' else path.parent  # directory
-    if not dir.exists() and mkdir:
-        dir.mkdir(parents=True, exist_ok=True)  # make directory
+        path = Path(f"{path}{sep}{n}{suffix}")  # increment path
+    if mkdir:
+        path.mkdir(parents=True, exist_ok=True)  # make directory
     return path
