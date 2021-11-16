@@ -818,6 +818,35 @@ def apply_classifier(x, model, img, im0):
 
     return x
 
+def my_apply_classifier(model,img,tbox):
+    folder_path, file_name = os.path.split(str(img))
+    filename, extension = os.path.splitext(file_name)
+    im = cv2.imread(str(img))
+    ims = []
+    print(file_name)
+    for i , tboxi in enumerate(tbox):
+        x1, y1, x2, y2 = tboxi.tolist()
+        if x1 == x2:
+            if x2+1 < im.shape[1]:
+                x2 = x2+1
+            else:
+                x1 = x1 - 1
+        elif y1 == y2:
+            if y2+1 < im.shape[0]:
+                y2 = y2 + 1
+            else:
+                y1 = y1 - 1
+        im_crop = im[math.ceil(y1):math.ceil((y2)), math.ceil(x1):math.ceil(x2)]
+        from utils.augmentations import letterbox
+        im_crop = letterbox(im_crop, (224, 224), stride=32,scaleFill=False, auto=False)[0]
+        # im_crop = cv2.resize(im_crop,(224,224))
+        cv2.imwrite(f'D:\python\yolov5\\runs\error\{filename}_{i}.jpg',im_crop)
+        im_crop = im_crop[:,:,::-1].transpose(2,0,1) # BGR to RGB, to 3x416x416
+        im_crop = np.ascontiguousarray(im_crop, dtype=np.float32)  # uint8 to float32
+        im_crop /= 255.0  # 0 - 255 to 0.0 - 1.0
+        ims.append(im_crop)
+    pred = model(torch.Tensor(ims).to(tbox.device)).argmax(1)
+    return pred
 
 def increment_path(path, exist_ok=False, sep='', mkdir=False):
     # Increment file or directory path, i.e. runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc.

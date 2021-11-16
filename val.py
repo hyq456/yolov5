@@ -4,6 +4,7 @@ Validate a trained YOLOv5 model accuracy on a custom dataset
 
 Usage:
     $ python path/to/val.py --data coco128.yaml --weights yolov5s.pt --img 640
+    python val.py --data D:\datasets\rice_bug\rice_bug_all_hr.yaml  --weights .\runs\best.pt --img 640 --second-stage
 """
 
 import argparse
@@ -30,10 +31,10 @@ from utils.callbacks import Callbacks
 from utils.datasets import create_dataloader
 from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_suffix, check_yaml,
                            coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
-                           scale_coords, xywh2xyxy, xyxy2xywh)
+                           scale_coords, xywh2xyxy, xyxy2xywh, my_apply_classifier)
 from utils.metrics import ConfusionMatrix, ap_per_class
 from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync
+from utils.torch_utils import select_device, time_sync, load_classifier
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -85,7 +86,7 @@ def process_batch(detections, labels, iouv):
 @torch.no_grad()
 def run(data,
         weights=None,  # model.pt path(s)
-        batch_size=32,  # batch size
+        batch_size=8,  # batch size
         imgsz=640,  # inference size (pixels)
         conf_thres=0.001,  # confidence threshold
         iou_thres=0.6,  # NMS IoU threshold
@@ -134,7 +135,7 @@ def run(data,
         if second_stage:
             # check_suffix(classfy_weight,'.pt')
             modelc = load_classifier(name='resnet18', n=4)  # initialize
-            modelc.load_state_dict(torch.load(r'./weights/res18.pt', map_location=device))
+            modelc.load_state_dict(torch.load(r'./weights/res18-224.pt', map_location=device))
             modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
@@ -233,12 +234,16 @@ def run(data,
                     for pi, predi in enumerate(pred_class):
                         if pred_class[pi].item() == 0:
                             predn[pi,5] = 1
+                            out[si][pi][5] = 1
                         elif pred_class[pi].item() == 1:
                             predn[pi,5] = 3
+                            out[si][pi][5] = 3
                         elif pred_class[pi].item() == 2:
                             predn[pi,5] = 0
+                            out[si][pi][5] = 0
                         elif pred_class[pi].item() == 3:
                             predn[pi,5] = 2
+                            out[si][pi][5] = 2
                     save_classfy_error(predn,labelsn,path,save_path=save_dir / 'errors')
 
                 correct = process_batch(predn, labelsn, iouv)
@@ -332,7 +337,7 @@ def run(data,
 def parse_opt():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_hr.yaml', help='dataset.yaml path')
+    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_all_hr.yaml', help='dataset.yaml path')
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
     parser.add_argument('--weights', nargs='+', type=str, default='./runs/best.pt', help='model.pt path(s)')
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
