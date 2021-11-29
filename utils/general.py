@@ -27,6 +27,8 @@ import pkg_resources as pkg
 import torch
 import torchvision
 import yaml
+from PIL import Image
+from torchvision import transforms
 
 from utils.downloads import gsutil_getsize
 from utils.metrics import box_iou, fitness
@@ -818,14 +820,18 @@ def apply_classifier(x, model, img, im0):
 
     return x
 
-def my_apply_classifier(model,img,tbox):
+def my_apply_classifier(model,img,pbox):
     folder_path, file_name = os.path.split(str(img))
     filename, extension = os.path.splitext(file_name)
     im = cv2.imread(str(img))
-    ims = []
-    print(file_name)
-    for i , tboxi in enumerate(tbox):
-        x1, y1, x2, y2 = tboxi.tolist()
+    ims = torch.empty((1,3,224,224))
+    data_transforms = transforms.Compose([
+        transforms.Resize([224, 224]),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    for i , pboxi in enumerate(pbox):
+        x1, y1, x2, y2 = pboxi.tolist()
         if x1 == x2:
             if x2+1 < im.shape[1]:
                 x2 = x2+1
@@ -840,12 +846,16 @@ def my_apply_classifier(model,img,tbox):
         from utils.augmentations import letterbox
         im_crop = letterbox(im_crop, (224, 224), stride=32,scaleFill=False, auto=False)[0]
         # im_crop = cv2.resize(im_crop,(224,224))
-        cv2.imwrite(f'D:\python\yolov5\\runs\error\{filename}_{i}.jpg',im_crop)
-        im_crop = im_crop[:,:,::-1].transpose(2,0,1) # BGR to RGB, to 3x416x416
-        im_crop = np.ascontiguousarray(im_crop, dtype=np.float32)  # uint8 to float32
-        im_crop /= 255.0  # 0 - 255 to 0.0 - 1.0
-        ims.append(im_crop)
-    pred = model(torch.Tensor(ims).to(tbox.device)).argmax(1)
+        # cv2.imwrite(f'D:\python\yolov5\\runs\error\{filename}_{i}.jpg',im_crop)
+        im_crop = cv2.cvtColor(im_crop, cv2.COLOR_BGR2RGB)
+        im_crop = Image.fromarray(im_crop)
+        im_crop = data_transforms(im_crop)
+        im_crop = im_crop.view(1, 3, 224, 224)
+        ims = torch.cat((ims, im_crop), 0)
+    ims = ims[1:]
+    with torch.no_grad():
+        pred = model(ims)
+        pred = pred.argmax(1)
     return pred
 
 def increment_path(path, exist_ok=False, sep='', mkdir=False):

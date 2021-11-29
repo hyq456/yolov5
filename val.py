@@ -109,8 +109,8 @@ def run(data,
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
-        second_stage = True,
-        classfy_weight = None
+        second_stage=True,
+        classfy_weight=None
         ):
     # Initialize/load model and set device
     training = model is not None
@@ -131,11 +131,11 @@ def run(data,
         gs = max(int(model.stride.max()), 32)  # grid size (max stride)
         imgsz = check_img_size(imgsz, s=gs)  # check image size
 
-        #Load classfy model
+        # Load classfy model
         if second_stage:
             # check_suffix(classfy_weight,'.pt')
             modelc = load_classifier(name='resnet18', n=4)  # initialize
-            modelc.load_state_dict(torch.load(r'./weights/res18-224.pt', map_location=device))
+            modelc.load_state_dict(torch.load(r'./weights/res18-224-pad.pt', map_location=device))
             modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
@@ -225,26 +225,26 @@ def run(data,
                 scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
                 labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
                 if second_stage:
-                    pbox = predn[:,:4]
+                    pbox = predn[:, :4]
                     # print(pbox)
-                    pred_class = my_apply_classifier(modelc,path,pbox)
+                    pred_class = my_apply_classifier(modelc, path, pbox)
                     # 正常操作
                     # predn[:,5] = pred_class
                     # 两个模型标签序号不对应的弱智操作
                     for pi, predi in enumerate(pred_class):
                         if pred_class[pi].item() == 0:
-                            predn[pi,5] = 1
+                            predn[pi, 5] = 1
                             out[si][pi][5] = 1
                         elif pred_class[pi].item() == 1:
-                            predn[pi,5] = 3
+                            predn[pi, 5] = 3
                             out[si][pi][5] = 3
                         elif pred_class[pi].item() == 2:
-                            predn[pi,5] = 0
+                            predn[pi, 5] = 0
                             out[si][pi][5] = 0
                         elif pred_class[pi].item() == 3:
-                            predn[pi,5] = 2
+                            predn[pi, 5] = 2
                             out[si][pi][5] = 2
-                    save_classfy_error(predn,labelsn,path,save_path=save_dir / 'errors')
+                    save_classfy_error(predn, labelsn, path, save_path=save_dir / 'errors')
 
                 correct = process_batch(predn, labelsn, iouv)
                 if plots:
@@ -337,7 +337,8 @@ def run(data,
 def parse_opt():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_all_hr.yaml', help='dataset.yaml path')
+    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_all_hr.yaml',
+                        help='dataset.yaml path')
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
     parser.add_argument('--weights', nargs='+', type=str, default='./runs/best.pt', help='model.pt path(s)')
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
@@ -357,7 +358,7 @@ def parse_opt():
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
-    parser.add_argument('--second-stage',action='store_true',help='use one classfy model output instead of yolo')
+    # parser.add_argument('--second-stage',action='store_true',help='use one classfy model output instead of yolo')
     opt = parser.parse_args()
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')
