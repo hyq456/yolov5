@@ -1,11 +1,13 @@
 import os.path
 
+import matplotlib
+from matplotlib import pyplot as plt
 import cv2
 import torch
+
 from utils.metrics import box_iou
 import numpy as np
 import math
-
 #保存分类错误图片
 def save_classfy_error(detections,labels,img_path,save_path):
     iouv = 0.5
@@ -32,3 +34,17 @@ def save_classfy_error(detections,labels,img_path,save_path):
             _,file_name = os.path.split(img_path)
             cv2.imwrite(f'{save_path}\{file_name}-true-{t_class}pred-{p_class}-{i}.jpg', error_crop)
             print(f'{save_path}/{file_name}-true-{t_class}pred-{p_class}-{i}.jpg')
+
+def imshow(inp, title=None):
+    """Imshow for Tensor."""
+    inp = inp.numpy().transpose((1, 2, 0))
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    inp = std * inp + mean
+    inp = np.clip(inp, 0, 1)
+    cv2.imshow('aa',inp)
+    cv2.waitKey(0)
+    # plt.imshow(inp)
+    # if title is not None:
+    #     plt.title(title)
+    # plt.pause(0.001)  # pause a bit so that plots are updated

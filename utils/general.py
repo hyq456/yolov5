@@ -849,6 +849,7 @@ def my_apply_classifier(model,img,pbox):
         # cv2.imwrite(f'D:\python\yolov5\\runs\error\{filename}_{i}.jpg',im_crop)
         im_crop = cv2.cvtColor(im_crop, cv2.COLOR_BGR2RGB)
         im_crop = Image.fromarray(im_crop)
+        # im_crop.save(f'D:\python\yolov5\\runs\error\{filename}_{i}.jpg')
         im_crop = data_transforms(im_crop)
         im_crop = im_crop.view(1, 3, 224, 224)
         ims = torch.cat((ims, im_crop), 0)
