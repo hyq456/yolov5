@@ -17,7 +17,6 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 
 from utils.general import LOGGER
 
@@ -54,7 +53,7 @@ def git_describe(path=Path(__file__).parent):  # path must be a directory
         return ''  # not a git repository
 
 
-def select_device(device='', batch_size=None):
+def select_device(device='', batch_size=0, newline=True):
     # device = 'cpu' or '0' or '0,1,2,3'
     s = f'YOLOv5 🚀 {git_describe() or date_modified()} torch {torch.__version__} '  # string
     device = str(device).strip().lower().replace('cuda:', '')  # to string, 'cuda:0' to '0'
@@ -69,7 +68,7 @@ def select_device(device='', batch_size=None):
     if cuda:
         devices = device.split(',') if device else '0'  # range(torch.cuda.device_count())  # i.e. 0,1,6,7
         n = len(devices)  # device count
-        if n > 1 and batch_size:  # check batch_size is divisible by device_count
+        if n > 1 and batch_size > 0:  # check batch_size is divisible by device_count
             assert batch_size % n == 0, f'batch-size {batch_size} not multiple of GPU count {n}'
         space = ' ' * (len(s) + 1)
         for i, d in enumerate(devices):
@@ -78,6 +77,8 @@ def select_device(device='', batch_size=None):
     else:
         s += 'CPU\n'
 
+    if not newline:
+        s = s.rstrip()
     LOGGER.info(s.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else s)  # emoji-safe
     return torch.device('cuda:0' if cuda else 'cpu')
 
@@ -233,25 +234,6 @@ def model_info(model, verbose=False, img_size=640):
         fs = ''
 
     LOGGER.info(f"Model Summary: {len(list(model.modules()))} layers, {n_p} parameters, {n_g} gradients{fs}")
-
-
-def load_classifier(name='resnet101', n=80):
-    # Loads a pretrained model reshaped to n-class output
-    model = torchvision.models.__dict__[name](pretrained=False)
-
-    # ResNet model properties
-    # input_size = [3, 224, 224]
-    # input_space = 'RGB'
-    # input_range = [0, 1]
-    # mean = [0.485, 0.456, 0.406]
-    # std = [0.229, 0.224, 0.225]
-
-    # Reshape output to n classes
-    filters = model.fc.weight.shape[1]
-    model.fc.bias = nn.Parameter(torch.zeros(n), requires_grad=True)
-    model.fc.weight = nn.Parameter(torch.zeros(n, filters), requires_grad=True)
-    model.fc.out_features = n
-    return model
 
 
 def scale_img(img, ratio=1.0, same_shape=False, gs=32):  # img(16,3,256,416)
