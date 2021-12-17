@@ -134,8 +134,8 @@ def run(data,
         # Load classfy model
         if second_stage:
             # check_suffix(classfy_weight,'.pt')
-            modelc = load_classifier(name='resnet101', n=4)  # initialize
-            modelc.load_state_dict(torch.load(r'./weights/res101-224-pad.pt', map_location=device))
+            modelc = load_classifier(name='resnet18', n=4)  # initialize
+            modelc.load_state_dict(torch.load(r'./weights/res18-224-pad.pt', map_location=device))
             modelc.to(device).eval()
 
         # Multi-GPU disabled, incompatible with .half() https://github.com/ultralytics/yolov5/issues/99
@@ -337,8 +337,8 @@ def run(data,
 def parse_opt():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\test.yaml',
-    # parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug_all_hr.yaml',
+    # parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\test.yaml',
+    parser.add_argument('--data', type=str, default=r'D:\datasets\rice_bug\rice_bug.yaml',
                         help='dataset.yaml path')
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model.pt path(s)')
     parser.add_argument('--weights', nargs='+', type=str, default='./runs/best.pt', help='model.pt path(s)')
