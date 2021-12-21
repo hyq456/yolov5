@@ -144,6 +144,12 @@ def run(data,
             device = torch.device('cpu')
             LOGGER.info(f'Forcing --batch-size 1 square inference shape(1,3,{imgsz},{imgsz}) for non-PyTorch backends')
 
+        # Load classfy model
+        if second_stage:
+            # check_suffix(classfy_weight,'.pt')
+            modelc = load_classifier(name='resnet101', n=4)  # initialize
+            modelc.load_state_dict(torch.load(r'./weights/res101-224-pad.pt', map_location=device))
+            modelc.to(device).eval()
         # Data
         data = check_dataset(data)  # check
 
