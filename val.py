@@ -111,7 +111,7 @@ def run(data,
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
-        second_stage=True,
+        second_stage=False,
         classfy_weight=None
         ):
     # Initialize/load model and set device
