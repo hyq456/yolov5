@@ -1227,11 +1227,5 @@ class GAM(nn.Module):
         return out
 
 
-if __name__ == '__main__':
-    x = torch.randn(1, 64, 32, 48)
-    b, c, h, w = x.shape
-    net = GAM_Attention(in_channels=c, out_channels=c)
-    y = net(x)
-
 
 
