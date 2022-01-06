@@ -3,10 +3,31 @@
 Validate a trained YOLOv5 model accuracy on a custom dataset
 
 Usage:
-    $ python path/to/val.py --data coco128.yaml --weights yolov5s.pt --img 640
-    python val.py --data D:\datasets\rice_bug\rice_bug_all_hr.yaml  --weights .\runs\best.pt --img 640 --second-stage
+
+    $ python path/to/val.py --weights yolov5s.pt --data coco128.yaml --img 640
+
+Usage - formats:
+    $ python path/to/val.py --weights yolov5s.pt                 # PyTorch
+                                      yolov5s.torchscript        # TorchScript
+                                      yolov5s.onnx               # ONNX Runtime or OpenCV DNN with --dnn
+                                      yolov5s.xml                # OpenVINO
+                                      yolov5s.engine             # TensorRT
+                                      yolov5s.mlmodel            # CoreML (MacOS-only)
+                                      yolov5s_saved_model        # TensorFlow SavedModel
+                                      yolov5s.pb                 # TensorFlow GraphDef
+                                      yolov5s.tflite             # TensorFlow Lite
+                                      yolov5s_edgetpu.tflite     # TensorFlow Edge TPU
 """
 
+from utils.torch_utils import select_device, time_sync, load_classifier
+from utils.plots import output_to_target, plot_images, plot_val_study
+from utils.metrics import ConfusionMatrix, ap_per_class
+from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_yaml,
+                           coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
+                           scale_coords, xywh2xyxy, xyxy2xywh, my_apply_classifier)
+from utils.datasets import create_dataloader
+from utils.callbacks import Callbacks
+from models.common import DetectMultiBackend
 import argparse
 import json
 import os
@@ -25,16 +46,6 @@ ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
-from models.common import DetectMultiBackend
-from utils.callbacks import Callbacks
-from utils.datasets import create_dataloader
-from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_yaml,
-                           coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
-                           scale_coords, xywh2xyxy, xyxy2xywh, my_apply_classifier)
-from utils.metrics import ConfusionMatrix, ap_per_class
-from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync, load_classifier
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -130,7 +141,7 @@ def run(data,
         (save_dir / 'errors' if second_stage else save_dir).mkdir(parents=True, exist_ok=True)  # make error classfy dir
 
         # Load model
-        model = DetectMultiBackend(weights, device=device, dnn=dnn)
+        model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
         stride, pt, jit, engine = model.stride, model.pt, model.jit, model.engine
         imgsz = check_img_size(imgsz, s=stride)  # check image size
         half &= (pt or jit or engine) and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
