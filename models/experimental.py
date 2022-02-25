@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from models.common import Conv, DWConv, Bottleneck
+from models.common import Conv, DWConv, Bottleneck, ConvNN
 from utils.downloads import attempt_download
 
 
@@ -193,7 +193,7 @@ class DWBottleneck(nn.Module):
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
-        self.cv2 = Conv(c_, c2, 3, 1,act=False)
+        self.cv2 = ConvNN(c_, c2, 3, 1,act=False)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
