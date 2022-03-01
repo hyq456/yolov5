@@ -304,11 +304,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 args[1] = [list(range(args[1] * 2))] * len(f)
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
-        elif m is SELayer:
-            channel = args[0]
-            channel = make_divisible(channel * gw, 8) if channel != no else channel
-            args = [channel]
-        elif m is eca_layer:
+        elif m is [SELayer,LKA,eca_layer]:
             channel = args[0]
             channel = make_divisible(channel * gw, 8) if channel != no else channel
             args = [channel]
