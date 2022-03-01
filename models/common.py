@@ -1404,7 +1404,7 @@ class AttentionModule(nn.Module):
         return u * attn
 
 
-class LKA(nn.Module):
+class lka(nn.Module):
     def __init__(self, d_model):
         super().__init__()
         self.d_model = d_model
@@ -1413,7 +1413,7 @@ class LKA(nn.Module):
         self.spatial_gating_unit = AttentionModule(d_model)
         self.proj_2 = nn.Conv2d(d_model, d_model, 1)
 
-    def forward(self, x, H, W):
+    def forward(self, x):
         shorcut = x.clone()
         x = self.proj_1(x)
         x = self.activation(x)
