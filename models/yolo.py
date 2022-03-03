@@ -282,14 +282,14 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in [Conv,Conv_GAM, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
-                 BottleneckCSP, C3, C3TR,C3STR,C3Bot, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
+                 BottleneckCSP, C3, C3_GC, C3TR,C3STR,C3Bot, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
             ,ShuffleNetV2_InvertedResidual,conv_bn_relu_maxpool,DWC3]:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in [BottleneckCSP, C3, C3TR,C3Bot,C3STR, C3Ghost,DWC3]:
+            if m in [BottleneckCSP, C3, C3_GC, C3TR,C3Bot,C3STR, C3Ghost,DWC3]:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
@@ -305,8 +305,6 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
         elif m is [SELayer,lka,eca_layer]:
-            print(args)
-            print(111111111111111111)
             channel = args[0]
             channel = make_divisible(channel * gw, 8) if channel != no else channel
             args = [channel]
