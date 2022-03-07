@@ -1568,3 +1568,26 @@ class ContextBlock2d(nn.Module):
             channel_add_term = self.channel_add_conv(context)
             out = out + channel_add_term
         return out
+
+#------------SFPN----------------------
+class SFB(nn.Module):
+    # Concatenate a list of tensors along dimension
+    def __init__(self, c1,c2):
+        super().__init__()
+        self.conv = Conv(c1, c2, 3, 1, 1)
+
+    def forward(self, x):
+        if len(x) == 2:
+            x = self.conv(torch.add(x[0],x[1]))
+        elif len(x) == 3:
+            x = self.conv(torch.add(torch.add(x[0],x[1]),x[2]))
+        return x
+
+class Dwsample(nn.Module):
+    def __init__(self,factor,mode):
+        super(Dwsample, self).__init__()
+        self.factor = factor
+        self.mode = mode
+    def forward(self,x):
+        x = nn.functional.interpolate(x,scale_factor=self.factor,mode=self.mode)
+        return x

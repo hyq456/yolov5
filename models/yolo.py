@@ -298,6 +298,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = sum([ch[x] for x in f])
         elif m is Concat_bifpn:
             c2 = max([ch[x] for x in f])
+        elif m in SFB:
+            c2 = c1
         elif m is Detect:
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
@@ -310,6 +312,9 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             args = [channel]
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
+        elif m in Dwsample:
+            factor = args[0]
+            mode = args[1]
         else:
             c2 = ch[f]
 
@@ -329,7 +334,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--cfg', type=str, default='LKA/bifpn_lka.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='yolov5l.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     parser.add_argument('--test', action='store_true', help='test all yolo*.yaml')
