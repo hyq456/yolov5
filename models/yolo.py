@@ -298,8 +298,9 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = sum([ch[x] for x in f])
         elif m is Concat_bifpn:
             c2 = max([ch[x] for x in f])
-        elif m in SFB:
-            c2 = c1
+        elif m is SFB:
+            c = max([ch[x] for x in f])
+            args = [c, *args]
         elif m is Detect:
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
@@ -312,9 +313,10 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             args = [channel]
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
-        elif m in Dwsample:
+        elif m is Dwsample:
             factor = args[0]
             mode = args[1]
+            # c1, c2 = ch[f], ch[f]
         else:
             c2 = ch[f]
 
