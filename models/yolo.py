@@ -282,14 +282,14 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in [Conv,Conv_GAM, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
-                 BottleneckCSP, C3, C3_GC, C3TR,C3STR,C3Bot, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
-            ,ShuffleNetV2_InvertedResidual,conv_bn_relu_maxpool,DWC3]:
+                 BottleneckCSP, C3, C3_GC, C3TR, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
+            ,DWC3]:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in [BottleneckCSP, C3, C3_GC, C3TR,C3Bot,C3STR, C3Ghost,DWC3]:
+            if m in [BottleneckCSP, C3, C3_GC, C3TR, C3Ghost,DWC3]:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
@@ -336,7 +336,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--cfg', type=str, default='yolov5l.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='test.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     parser.add_argument('--test', action='store_true', help='test all yolo*.yaml')
