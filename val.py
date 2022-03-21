@@ -42,10 +42,10 @@ from utils.callbacks import Callbacks
 from utils.datasets import create_dataloader
 from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_yaml,
                            coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
-                           scale_coords, xywh2xyxy, xyxy2xywh)
+                           scale_coords, xywh2xyxy, xyxy2xywh, my_apply_classifier)
 from utils.metrics import ConfusionMatrix, ap_per_class
 from utils.plots import output_to_target, plot_images, plot_val_study
-from utils.torch_utils import select_device, time_sync
+from utils.torch_utils import select_device, time_sync, load_classifier
 
 
 def save_one_txt(predn, save_conf, shape, file):
