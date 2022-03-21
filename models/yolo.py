@@ -62,9 +62,10 @@ class Detect(nn.Module):
                     y[..., 0:2] = (y[..., 0:2] * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
                     y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
                 else:  # for YOLOv5 on AWS Inferentia https://github.com/ultralytics/yolov5/pull/2953
-                    xy = (y[..., 0:2] * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
-                    wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
-                    y = torch.cat((xy, wh, y[..., 4:]), -1)
+                    xy, wh, conf = y.tensor_split((2, 4), 4)
+                    xy = (xy * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
+                    wh = (wh * 2) ** 2 * self.anchor_grid[i]  # wh
+                    y = torch.cat((xy, wh, conf), 4)
                 z.append(y.view(bs, -1, self.no))
 
         return x if self.training else (torch.cat(z, 1), x)
@@ -117,9 +118,8 @@ class Model(nn.Module):
             # 计算三个feature map下采样的倍率  [8, 16, 32]
             m.stride = torch.tensor([s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))])  # forward
             # 求出相对当前feature map的anchor大小 如[10, 13]/8 -> [1.25, 1.625]
+            check_anchor_order(m)  # must be in pixel-space (not grid-space)
             m.anchors /= m.stride.view(-1, 1, 1)
-            # 检查anchor顺序与stride顺序是否一致
-            check_anchor_order(m)
             self.stride = m.stride
             self._initialize_biases()  # only run once
 
@@ -295,7 +295,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
-            c2 = sum([ch[x] for x in f])
+            c2 = sum(ch[x] for x in f)
         elif m is Concat_bifpn:
             c2 = max([ch[x] for x in f])
         elif m is SFB:
@@ -335,8 +335,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('--cfg', type=str, default='test.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='yolov5s.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     parser.add_argument('--test', action='store_true', help='test all yolo*.yaml')
