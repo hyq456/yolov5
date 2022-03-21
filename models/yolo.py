@@ -117,7 +117,6 @@ class Model(nn.Module):
             m.inplace = self.inplace
             # 计算三个feature map下采样的倍率  [8, 16, 32]
             m.stride = torch.tensor([s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))])  # forward
-            # 求出相对当前feature map的anchor大小 如[10, 13]/8 -> [1.25, 1.625]
             check_anchor_order(m)  # must be in pixel-space (not grid-space)
             m.anchors /= m.stride.view(-1, 1, 1)
             self.stride = m.stride
