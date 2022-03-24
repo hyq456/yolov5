@@ -116,10 +116,8 @@ class Model(nn.Module):
             m.inplace = self.inplace
             # 计算三个feature map下采样的倍率  [8, 16, 32]
             m.stride = torch.tensor([s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))])  # forward
-            # 求出相对当前feature map的anchor大小 如[10, 13]/8 -> [1.25, 1.625]
+            check_anchor_order(m)  # must be in pixel-space (not grid-space)
             m.anchors /= m.stride.view(-1, 1, 1)
-            # 检查anchor顺序与stride顺序是否一致
-            check_anchor_order(m)
             self.stride = m.stride
             self._initialize_biases()  # only run once
 
@@ -282,20 +280,20 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in [Conv,Conv_GAM, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
-                 BottleneckCSP, C3, C3_GC, C3TR, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
+                 BottleneckCSP, C3, C3_GC,C3_LKA, C3TR, C3SPP, C3Ghost,CBAM,CoordAtt,GAM
             ,DWC3]:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in [BottleneckCSP, C3, C3_GC, C3TR, C3Ghost,DWC3]:
+            if m in [BottleneckCSP, C3, C3_GC,C3_LKA, C3TR, C3Ghost,DWC3]:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
-            c2 = sum([ch[x] for x in f])
+            c2 = sum(ch[x] for x in f)
         elif m is Concat_bifpn:
             c2 = max([ch[x] for x in f])
         elif m is SFB:
@@ -335,8 +333,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('--cfg', type=str, default='yolov5l.yaml', help='model.yaml')
+    parser.add_argument('--cfg', type=str, default='yolov5s.yaml', help='model.yaml')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--profile', action='store_true', help='profile model speed')
     parser.add_argument('--test', action='store_true', help='test all yolo*.yaml')
