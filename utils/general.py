@@ -178,8 +178,8 @@ def init_seeds(seed=0):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    cudnn.benchmark, cudnn.deterministic = (False, True) if seed == 0 else (True, False)
-
+    # cudnn.benchmark, cudnn.deterministic = (False, True) if seed == 0 else (True, False)
+    cudnn.benchmark, cudnn.deterministic = (False, True)
 
 def intersect_dicts(da, db, exclude=()):
     # Dictionary intersection of matching keys and shapes, omitting 'exclude' keys, using da values
