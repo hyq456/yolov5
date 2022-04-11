@@ -11,7 +11,7 @@ Usage - formats:
                                       yolov5s.onnx               # ONNX Runtime or OpenCV DNN with --dnn
                                       yolov5s.xml                # OpenVINO
                                       yolov5s.engine             # TensorRT
-                                      yolov5s.mlmodel            # CoreML (MacOS-only)
+                                      yolov5s.mlmodel            # CoreML (macOS-only)
                                       yolov5s_saved_model        # TensorFlow SavedModel
                                       yolov5s.pb                 # TensorFlow GraphDef
                                       yolov5s.tflite             # TensorFlow Lite
@@ -27,7 +27,7 @@ from threading import Thread
 
 import numpy as np
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from utils.my_utils import save_classfy_error
 
@@ -40,10 +40,10 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 from models.common import DetectMultiBackend
 from utils.callbacks import Callbacks
 from utils.datasets import create_dataloader
-from utils.general import (LOGGER, box_iou, check_dataset, check_img_size, check_requirements, check_yaml,
+from utils.general import (LOGGER, check_dataset, check_img_size, check_requirements, check_yaml,
                            coco80_to_coco91_class, colorstr, increment_path, non_max_suppression, print_args,
                            scale_coords, xywh2xyxy, xyxy2xywh, my_apply_classifier)
-from utils.metrics import ConfusionMatrix, ap_per_class
+from utils.metrics import ConfusionMatrix, ap_per_class, box_iou
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, time_sync, load_classifier
 
@@ -64,10 +64,11 @@ def save_one_json(predn, jdict, path, class_map):
     box = xyxy2xywh(predn[:, :4])  # xywh
     box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
     for p, b in zip(predn.tolist(), box.tolist()):
-        jdict.append({'image_id': image_id,
-                      'category_id': class_map[int(p[5])],
-                      'bbox': [round(x, 3) for x in b],
-                      'score': round(p[4], 5)})
+        jdict.append({
+            'image_id': image_id,
+            'category_id': class_map[int(p[5])],
+            'bbox': [round(x, 3) for x in b],
+            'score': round(p[4], 5)})
 
 
 def process_batch(detections, labels, iouv):
@@ -95,7 +96,8 @@ def process_batch(detections, labels, iouv):
 
 
 @torch.no_grad()
-def run(data,
+def run(
+        data,
         weights=None,  # model.pt path(s)
         batch_size=32,  # batch size
         imgsz=640,  # inference size (pixels)
@@ -124,7 +126,8 @@ def run(data,
         compute_loss=None,
         second_stage=False,
         classfy_weight=None
-        ):
+):
+
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -171,12 +174,23 @@ def run(data,
 
     # Dataloader
     if not training:
+        if pt and not single_cls:  # check --weights are trained on --data
+            ncm = model.model.yaml['nc']
+            assert ncm == nc, f'{weights[0]} ({ncm} classes) trained on different --data than what you passed ({nc} ' \
+                              f'classes). Pass correct combination of --weights and --data that are trained together.'
         model.warmup(imgsz=(1 if pt else batch_size, 3, imgsz, imgsz))  # warmup
         pad = 0.0 if task in ('speed', 'benchmark') else 0.5
         rect = False if task == 'benchmark' else pt  # square inference for benchmarks
         task = task if task in ('train', 'val', 'test') else 'val'  # path to train/val/test images
-        dataloader = create_dataloader(data[task], imgsz, batch_size, stride, single_cls, pad=pad, rect=rect,
-                                       workers=workers, prefix=colorstr(f'{task}: '))[0]
+        dataloader = create_dataloader(data[task],
+                                       imgsz,
+                                       batch_size,
+                                       stride,
+                                       single_cls,
+                                       pad=pad,
+                                       rect=rect,
+                                       workers=workers,
+                                       prefix=colorstr(f'{task}: '))[0]
 
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
@@ -186,8 +200,10 @@ def run(data,
     dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
+    callbacks.run('on_val_start')
     pbar = tqdm(dataloader, desc=s, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')  # progress bar
     for batch_i, (im, targets, paths, shapes) in enumerate(pbar):
+        callbacks.run('on_val_batch_start')
         t1 = time_sync()
         if cuda:
             im = im.to(device, non_blocking=True)
@@ -280,6 +296,8 @@ def run(data,
             Thread(target=plot_images, args=(im, targets, paths, f, names), daemon=True).start()
             f = save_dir / f'val_batch{batch_i}_pred.jpg'  # predictions
             Thread(target=plot_images, args=(im, output_to_target(out), paths, f, names), daemon=True).start()
+
+        callbacks.run('on_val_batch_end')
 
     # Compute metrics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
@@ -376,7 +394,7 @@ def parse_opt():
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')
     opt.save_txt |= opt.save_hybrid
-    print_args(FILE.stem, opt)
+    print_args(vars(opt))
     return opt
 
 
