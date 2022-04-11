@@ -156,6 +156,122 @@ class C3TR(C3):
         c_ = int(c2 * e)
         self.m = TransformerBlock(c_, c_, 4, n)
 
+class C3STR(C3):
+    # C3 module with SwinTransformerBlock()
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        super().__init__(c1, c2, n, shortcut, g, e)
+        c_ = int(c2 * e)
+        self.m = SwinTransformerBlock(c_, c_, c_//32, n)
+
+class SwinTransformerBlock(nn.Module):
+    def __init__(self, c1, c2, num_heads, num_layers, window_size=8):
+        super().__init__()
+        self.conv = None
+        if c1 != c2:
+            self.conv = Conv(c1, c2)
+
+        self.window_size = window_size
+        self.shift_size = window_size // 2
+        self.tr = nn.Sequential(*(SwinTransformerLayer(c2, num_heads=num_heads, window_size=window_size,  shift_size=0 if (i % 2 == 0) else self.shift_size ) for i in range(num_layers)))
+
+    def forward(self, x):
+        if self.conv is not None:
+            x = self.conv(x)
+        x = self.tr(x)
+        return x
+
+class SwinTransformerLayer(nn.Module):
+    # Vision Transformer https://arxiv.org/abs/2010.11929
+    def __init__(self, c, num_heads, window_size=7, shift_size=0,
+                 mlp_ratio = 4, qkv_bias=False, drop=0., attn_drop=0., drop_path=0.,
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm):
+        super().__init__()
+        if num_heads > 10:
+            drop_path = 0.1
+        self.window_size = window_size
+        self.shift_size = shift_size
+        self.mlp_ratio = mlp_ratio
+
+        self.norm1 = norm_layer(c)
+        self.attn = WindowAttention(
+            c, window_size=(self.window_size, self.window_size), num_heads=num_heads, qkv_bias=qkv_bias,
+            attn_drop=attn_drop, proj_drop=drop)
+
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(c)
+        mlp_hidden_dim = int(c * mlp_ratio)
+        self.mlp = Mlp(in_features=c, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+
+    def create_mask(self, x, H, W):
+        # calculate attention mask for SW-MSA
+        # 保证Hp和Wp是window_size的整数倍
+        Hp = int(np.ceil(H / self.window_size)) * self.window_size
+        Wp = int(np.ceil(W / self.window_size)) * self.window_size
+        # 拥有和feature map一样的通道排列顺序，方便后续window_partition
+        img_mask = torch.zeros((1, Hp, Wp, 1), device=x.device)  # [1, Hp, Wp, 1]
+        h_slices = ( (0, -self.window_size),
+                     slice(-self.window_size, -self.shift_size),
+                     slice(-self.shift_size, None))
+        w_slices = (slice(0, -self.window_size),
+                    slice(-self.window_size, -self.shift_size),
+                    slice(-self.shift_size, None))
+        cnt = 0
+        for h in h_slices:
+            for w in w_slices:
+                img_mask[:, h, w, :] = cnt
+                cnt += 1
+
+        mask_windows = window_partition(img_mask, self.window_size)  # [nW, Mh, Mw, 1]
+        mask_windows = mask_windows.view(-1, self.window_size * self.window_size)  # [nW, Mh*Mw]
+        attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)  # [nW, 1, Mh*Mw] - [nW, Mh*Mw, 1]
+        # [nW, Mh*Mw, Mh*Mw]
+        attn_mask = attn_mask.masked_fill(attn_mask != 0, torch.tensor(-100.0)).masked_fill(attn_mask == 0, torch.tensor(0.0))
+        return attn_mask
+
+    def forward(self, x):
+        b, c, w, h = x.shape
+        x = x.permute(0, 3, 2, 1).contiguous() # [b,h,w,c]
+
+        attn_mask = self.create_mask(x, h, w) # [nW, Mh*Mw, Mh*Mw]
+        shortcut = x
+        x = self.norm1(x)
+
+        pad_l = pad_t = 0
+        pad_r = (self.window_size - w % self.window_size) % self.window_size
+        pad_b = (self.window_size - h % self.window_size) % self.window_size
+        x = F.pad(x, (0, 0, pad_l, pad_r, pad_t, pad_b))
+        _, hp, wp, _ = x.shape
+
+        if self.shift_size > 0:
+            # print(f"shift size: {self.shift_size}")
+            shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+        else:
+            shifted_x = x
+            attn_mask = None
+
+        x_windows = window_partition(shifted_x, self.window_size) # [nW*B, Mh, Mw, C]
+        x_windows = x_windows.view(-1, self.window_size * self.window_size, c) # [nW*B, Mh*Mw, C]
+
+        attn_windows = self.attn(x_windows, mask=attn_mask)  # [nW*B, Mh*Mw, C]
+
+        attn_windows = attn_windows.view(-1, self.window_size, self.window_size, c)  # [nW*B, Mh, Mw, C]
+        shifted_x = window_reverse(attn_windows, self.window_size, hp, wp)  # [B, H', W', C]
+
+        if self.shift_size > 0:
+            x = torch.roll(shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2))
+        else:
+            x = shifted_x
+
+        if pad_r > 0 or pad_b > 0:
+            # 把前面pad的数据移除掉
+            x = x[:, :h, :w, :].contiguous()
+
+        x = shortcut + self.drop_path(x)
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+        x = x.permute(0, 3, 2, 1).contiguous()
+        return x # (b, self.c2, w, h)
+
 class C3SPP(C3):
     # C3 module with SPP()
     def __init__(self, c1, c2, k=(5, 9, 13), n=1, shortcut=True, g=1, e=0.5):
