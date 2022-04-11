@@ -360,7 +360,6 @@ if __name__ == '__main__':
     # Options
     if opt.line_profile:  # profile layer by layer
         _ = model(im, profile=True)
-
     elif opt.profile:  # profile forward-backward
         results = profile(input=im, ops=[model], n=3)
 
