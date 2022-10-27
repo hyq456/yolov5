@@ -29,6 +29,7 @@ import os
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
@@ -250,3 +251,19 @@ def main(opt):
 if __name__ == "__main__":
     opt = parse_opt()
     main(opt)
+
+def cam_show_img(img, feature_map, grads, out_name):
+    H, W, _ = img.shape
+    cam = np.zeros(feature_map.shape[1:], dtype=np.float32)
+    grads = grads.reshape([grads.shape[0],-1])
+    weights = np.mean(grads, axis=1)
+    for i, w in enumerate(weights):
+        cam += w * feature_map[i, :, :]
+    cam = np.maximum(cam, 0)
+    cam = cam / cam.max()
+    cam = cv2.resize(cam, (W, H))
+
+    heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
+    cam_img = 0.3 * heatmap + 0.7 * img
+
+    cv2.imwrite(out_name, cam_img)
