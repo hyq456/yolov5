@@ -52,4 +52,3 @@ head:
 
    [[21, 24, 27, 30], 1, Detect, [nc, anchors]],  # Detect(P2, P3, P4, P5)
   ]
-

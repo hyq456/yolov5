@@ -182,11 +182,16 @@ class DetectionModel(BaseModel):
         if anchors:
             LOGGER.info(f'Overriding model.yaml anchors with anchors={anchors}')
             self.yaml['anchors'] = round(anchors)  # override yaml value
+
+        # 创建网络模型
+        # self.model: 初始化的整个网络模型(包括Detect层结构)
+        # self.save: 所有层结构中from不等于-1的序号，并排好序  [4, 6, 10, 14, 17, 20, 23]
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch])  # model, savelist
         self.names = [str(i) for i in range(self.yaml['nc'])]  # default names
         self.inplace = self.yaml.get('inplace', True)
 
         # Build strides, anchors
+        # 获取Detect模块的stride(相对输入图像的下采样率)和anchors在当前Detect输出的feature map的尺度
         m = self.model[-1]  # Detect()
         if isinstance(m, (Detect, Segment)):
             s = 256  # 2x min stride
@@ -316,19 +321,21 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in {
                 Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
-                BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x}:
+                BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x,Conv_GAM,C3STR,C3_GC,C3_LKA,CBAM,CoordAtt,GAM}:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in {BottleneckCSP, C3, C3TR, C3Ghost, C3x}:
+            if m in {BottleneckCSP, C3,C3_GC,C3_LKA, C3TR, C3STR, C3Ghost, C3x}:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
+        elif m is Concat_bifpn:
+            c2 = max([ch[x] for x in f])
         # TODO: channel, gw, gd
         elif m in {Detect, Segment}:
             args.append([ch[x] for x in f])
@@ -338,8 +345,16 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 args[3] = make_divisible(args[3] * gw, 8)
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
+        elif m is [SELayer,lka,eca_layer]:
+            channel = args[0]
+            channel = make_divisible(channel * gw, 8) if channel != no else channel
+            args = [channel]
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
+        elif m is Dwsample:
+            factor = args[0]
+            mode = args[1]
+            # c1, c2 = ch[f], ch[f]
         else:
             c2 = ch[f]
 
@@ -389,3 +404,16 @@ if __name__ == '__main__':
 
     else:  # report fused model summary
         model.fuse()
+
+    # Tensorboard (not working https://github.com/ultralytics/yolov5/issues/2898)
+    # from torch.utils.tensorboard import SummaryWriter
+    # tb_writer = SummaryWriter('.')
+    # LOGGER.info("Run 'tensorboard --logdir=models' to view tensorboard at http://localhost:6006/")
+    # tb_writer.add_graph(torch.jit.trace(model, img, strict=False), [])  # add model graph
+
+    #保存模型netron可视化
+    # Create modelice)
+    #     # x = torch.randn(1, 3, 640, 640).to(device)
+    #     # script_model = torch.jit.trace(model, x)
+    # model = Model(opt.cfg).to(dev
+    # script_model.save("m.pt")
