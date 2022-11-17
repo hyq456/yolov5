@@ -267,7 +267,7 @@ class SwinTransformerLayer(nn.Module):
         pad_l = pad_t = 0
         pad_r = (self.window_size - w % self.window_size) % self.window_size
         pad_b = (self.window_size - h % self.window_size) % self.window_size
-        x = F.pad(x, (0, 0, pad_l, pad_r, pad_t, pad_b))
+        x = torch.nn.functional.pad(x, (0, 0, pad_l, pad_r, pad_t, pad_b))
         _, hp, wp, _ = x.shape
 
         if self.shift_size > 0:
