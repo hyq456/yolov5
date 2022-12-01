@@ -320,14 +320,15 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in {
-                Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
-                BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x,Conv_GAM,C3STR,C3_GC,C3_LKA,CBAM,CoordAtt,GAM}:
+            Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
+            BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x, Conv_GAM, C3STR,
+            C3STR2, C3_GC, C3_LKA, CBAM, CoordAtt, GAM}:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in {BottleneckCSP, C3,C3_GC,C3_LKA, C3TR, C3STR, C3Ghost, C3x}:
+            if m in {BottleneckCSP, C3, C3_GC, C3_LKA, C3TR, C3STR, C3STR2, C3Ghost, C3x}:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
@@ -345,7 +346,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 args[3] = make_divisible(args[3] * gw, 8)
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
-        elif m is [SELayer,lka,eca_layer]:
+        elif m is [SELayer, lka, eca_layer]:
             channel = args[0]
             channel = make_divisible(channel * gw, 8) if channel != no else channel
             args = [channel]
@@ -411,7 +412,7 @@ if __name__ == '__main__':
     # LOGGER.info("Run 'tensorboard --logdir=models' to view tensorboard at http://localhost:6006/")
     # tb_writer.add_graph(torch.jit.trace(model, img, strict=False), [])  # add model graph
 
-    #保存模型netron可视化
+    # 保存模型netron可视化
     # Create modelice)
     #     # x = torch.randn(1, 3, 640, 640).to(device)
     #     # script_model = torch.jit.trace(model, x)

@@ -192,6 +192,13 @@ class C3STR(C3):
         c_ = int(c2 * e)
         self.m = SwinTransformerBlock(c_, c_, c_//32, n)
 
+class C3STR2(C3):
+    # C3 module with SwinTransformerBlock()
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        super().__init__(c1, c2, n, shortcut, g, e)
+        c_ = int(c2 * e)
+        self.m = SwinTransformer2Block(c_, c_, c_//32, n)
+
 class C3SPP(C3):
     # C3 module with SPP()
     def __init__(self, c1, c2, k=(5, 9, 13), n=1, shortcut=True, g=1, e=0.5):
@@ -1731,7 +1738,9 @@ class WindowAttention_v2(nn.Module):
 
         # cosine attention
         attn = (F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1))
-        logit_scale = torch.clamp(self.logit_scale, max=torch.log(torch.tensor(1. / 0.01))).exp()
+        tmp_max = torch.log(torch.tensor(1. / 0.01)).to(self.logit_scale.device)
+
+        logit_scale = torch.clamp(self.logit_scale, max=tmp_max).exp()
         attn = attn * logit_scale
 
         relative_position_bias_table = self.cpb_mlp(self.relative_coords_table).view(-1, self.num_heads)
