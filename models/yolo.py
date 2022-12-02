@@ -258,6 +258,16 @@ class BaseModel(nn.Module):
                 m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
                 delattr(m, 'bn')  # remove batchnorm
                 m.forward = m.forward_fuse  # update forward
+            elif isinstance(m, RepConv):
+                # print(f" fuse_repvgg_block")
+                m.fuse_repvgg_block()
+            # elif isinstance(m, RepConv_OREPA):
+            #     # print(f" switch_to_deploy")
+            #     m.switch_to_deploy()
+            elif isinstance(m, (IDetect)):  ##add fuse layers
+                print("no fuse for segment!") if isinstance(m, Segment) else m.fuse()
+                # m.fuse()
+                m.forward = m.fuseforward
         self.info()
         return self
 
@@ -453,7 +463,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         if m in {
             Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
             BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x, Conv_GAM, C3STR,
-            C3STR2, C3_GC, C3_LKA, CBAM, CoordAtt, GAM}:
+            C3STR2, C3_GC, C3_LKA, CBAM, CoordAtt, GAM,
+            RepConv}:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
